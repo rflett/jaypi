@@ -1,0 +1,8 @@
+{
+  "resource": "/",
+  "path": "/user",
+  "httpMethod": "GET",
+  "pathParameters": {
+    "userId": "a2972d18-2862-4eff-9af5-49a177455cb5"
+  }
+}

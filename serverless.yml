@@ -1,0 +1,25 @@
+service: jjj-api
+frameworkVersion: '>=1.28.0 <2.0.0'
+
+provider:
+  name: aws
+  runtime: go1.x
+  environment:
+    AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
+    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
+    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
+    AWS_SECURITY_TOKEN: ${env:AWS_SECURITY_TOKEN}
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  getUser:
+    handler: bin/getUser
+    events:
+      - http:
+          path: user/{userId}
+          method: get
