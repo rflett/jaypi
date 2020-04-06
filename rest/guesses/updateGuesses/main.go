@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -11,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 const userTable = "users"
@@ -21,35 +21,45 @@ var (
 	db            = dynamodb.New(awsSession)
 )
 
-// Guess is a song guess consisting of an artist and song name
+// Guess is a song guess
 type Guess struct {
 	Artist string `json:"artist"`
 	Song   string `json:"song"`
 }
 
-// user is a user of the application
-type user struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Nickname  string
-	Guesses   []Guess
+// BodyRequest is the expected body of the update user guesses request
+type BodyRequest struct {
+	Guesses []Guess `json:"guesses"`
 }
 
-func getItem(userID string) (user, error) {
+func updateItem(userID string, body BodyRequest) error {
+	// marshall guesses into a dynamdb attribute
+	// bodyAsList := []BodyRequest{body}
+	// av, _ := dynamodbattribute.MarshalList(bodyAsList)
+	av, _ := dynamodbattribute.MarshalList(body.Guesses)
 
-	// create query
-	input := &dynamodb.GetItemInput{
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(userTable),
+		ExpressionAttributeNames: map[string]*string{
+			"#G": aws.String("Guesses"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":g": {
+				L: av,
+			},
+		},
 		Key: map[string]*dynamodb.AttributeValue{
 			"ID": {
 				S: aws.String(userID),
 			},
 		},
-		TableName: aws.String(userTable),
+		UpdateExpression: aws.String("SET #G = :g"),
+		ReturnValues:     aws.String("NONE"),
 	}
 
-	// getItem
-	result, err := db.GetItem(input)
+	// update
+	_, err := db.UpdateItem(input)
 
 	// handle errors
 	if err != nil {
@@ -69,18 +79,9 @@ func getItem(userID string) (user, error) {
 		} else {
 			fmt.Println(err.Error())
 		}
-		return user{}, err
+		return err
 	}
-
-	// unmarshal item into the user struct
-	item := user{}
-	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
-	if err != nil {
-		fmt.Printf("Failed to unmarshal Record, %v", err)
-		return user{}, errors.New("Failed to unmarshall Record to user")
-	}
-
-	return item, nil
+	return nil
 }
 
 // Handler is our handle on life
@@ -89,15 +90,21 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// get userId from pathParameters
 	userID := request.PathParameters["userId"]
 
-	user, err := getItem(userID)
+	// unmarshall request body to BodyRequest struct
+	bodyRequest := BodyRequest{}
+	err := json.Unmarshal([]byte(request.Body), &bodyRequest)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil
 	}
 
+	// update
+	updateErr := updateItem(userID, bodyRequest)
+	if updateErr != nil {
+		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: 500}, nil
+	}
+
 	// create and send the response
-	body, _ := json.Marshal(user)
-	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(body), StatusCode: 200, Headers: headers}, nil
+	return events.APIGatewayProxyResponse{Body: "", StatusCode: 204}, nil
 }
 
 func main() {

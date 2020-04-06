@@ -1,0 +1,9 @@
+{
+  "resource": "/",
+  "path": "/user/guesses",
+  "httpMethod": "POST",
+  "pathParameters": {
+    "userId": "a2972d18-2862-4eff-9af5-49a177455cb5"
+  },
+  "body": "{\"guesses\": [{\"artist\": \"Kara\", \"song\": \"where the wild things are?\"}]}"
+}

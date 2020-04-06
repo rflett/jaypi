@@ -30,3 +30,11 @@ functions:
       - http:
           path: user/{userId}
           method: put
+
+
+  updateGuesses:
+    handler: bin/updateGuesses
+    events:
+      - http:
+          path: user/guesses/{userId}
+          method: post
