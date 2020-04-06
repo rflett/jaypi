@@ -23,3 +23,10 @@ functions:
       - http:
           path: user/{userId}
           method: get
+
+  updateUser:
+    handler: bin/updateUser
+    events:
+      - http:
+          path: user/{userId}
+          method: put
