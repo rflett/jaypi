@@ -42,7 +42,7 @@ func updateItem(userID string, body BodyRequest) error {
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String(userTable),
 		ExpressionAttributeNames: map[string]*string{
-			"#G": aws.String("Guesses"),
+			"#G": aws.String("guesses"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":g": {
@@ -50,7 +50,7 @@ func updateItem(userID string, body BodyRequest) error {
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"ID": {
+			"id": {
 				S: aws.String(userID),
 			},
 		},

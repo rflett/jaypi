@@ -29,11 +29,11 @@ type Guess struct {
 
 // user is a user of the application
 type user struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Nickname  string
-	Guesses   []Guess
+	ID        string  `json:"id"`
+	FirstName string  `json:"firstName"`
+	LastName  string  `json:"lastName"`
+	Nickname  string  `json:"nickname"`
+	Guesses   []Guess `json:"guesses"`
 }
 
 func getItem(userID string) (user, error) {

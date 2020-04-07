@@ -31,10 +31,16 @@ functions:
           path: user/{userId}
           method: put
 
-
   updateGuesses:
     handler: bin/updateGuesses
     events:
       - http:
           path: user/guesses/{userId}
+          method: post
+
+  createGroup:
+    handler: bin/createGroup
+    events:
+      - http:
+          path: group
           method: post

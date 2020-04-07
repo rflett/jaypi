@@ -1,0 +1,6 @@
+{
+  "resource": "/",
+  "path": "/group",
+  "httpMethod": "POST",
+  "body": "{\"nickname\": \"Ryan's Group\"}"
+}

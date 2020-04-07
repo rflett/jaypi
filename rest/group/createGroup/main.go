@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -12,41 +14,39 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-const userTable = "users"
+const groupTable = "groups"
 
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
 )
 
-// BodyRequest is the expected body of the update user request
+// BodyRequest is the expected body of the create group request
 type BodyRequest struct {
 	Nickname string `json:"nickname"`
 }
 
-func updateItem(userID string, body BodyRequest) error {
-	// update query
-	input := &dynamodb.UpdateItemInput{
-		TableName: aws.String(userTable),
-		ExpressionAttributeNames: map[string]*string{
-			"#N": aws.String("nickname"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":n": {
-				S: aws.String(body.Nickname),
-			},
-		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(userID),
-			},
-		},
-		UpdateExpression: aws.String("SET #N = :n"),
-		ReturnValues:     aws.String("NONE"),
+// Group is the group DTO
+type Group struct {
+	ID       string   `json:"id"`
+	Nickname string   `json:"nickname"`
+	Owner    string   `json:"owner"`
+	Members  []string `json:"members"`
+}
+
+func createItem(group Group) error {
+	// create attribute value
+	av, _ := dynamodbattribute.MarshalMap(group)
+
+	// create query
+	input := &dynamodb.PutItemInput{
+		TableName:    aws.String(groupTable),
+		Item:         av,
+		ReturnValues: aws.String("NONE"),
 	}
 
 	// update
-	_, err := db.UpdateItem(input)
+	_, err := db.PutItem(input)
 
 	// handle errors
 	if err != nil {
@@ -74,9 +74,6 @@ func updateItem(userID string, body BodyRequest) error {
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	// get userId from pathParameters
-	userID := request.PathParameters["userId"]
-
 	// unmarshall request body to BodyRequest struct
 	bodyRequest := BodyRequest{}
 	err := json.Unmarshal([]byte(request.Body), &bodyRequest)
@@ -84,10 +81,17 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil
 	}
 
-	// update
-	updateErr := updateItem(userID, bodyRequest)
-	if updateErr != nil {
-		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: 500}, nil
+	// create
+	userID := "a2972d18-2862-4eff-9af5-49a177455cb5"
+	g := Group{
+		ID:       "fd4f08ef-99da-4832-ad0c-0e9d2de6af48",
+		Nickname: bodyRequest.Nickname,
+		Owner:    userID,
+		Members:  []string{userID},
+	}
+	createErr := createItem(g)
+	if createErr != nil {
+		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: 500}, nil
 	}
 
 	// create and send the response
