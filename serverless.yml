@@ -65,3 +65,10 @@ functions:
       - http:
           path: group/{groupId}
           method: put
+
+  createInvite:
+    handler: bin/createInvite
+    events:
+      - http:
+          path: group/invite
+          method: post
