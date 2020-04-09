@@ -58,3 +58,10 @@ functions:
       - http:
           path: group/members{groupId}
           method: get
+
+  updateGroup:
+    handler: bin/updateGroup
+    events:
+      - http:
+          path: group/{groupId}
+          method: put
