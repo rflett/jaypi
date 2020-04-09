@@ -1,0 +1,6 @@
+{
+  "resource": "/",
+  "path": "/group/member",
+  "httpMethod": "POST",
+  "body": "{\"code\": \"a2972d18-2862-4eff-9af5-49a177455cb5\",\"groupId\": \"fd4f08ef-99da-4832-ad0c-0e9d2de6af48\", \"userId\": \"3f623014-0089-4089-ae14-66da486603ec\"}"
+}

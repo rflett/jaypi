@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -21,32 +18,29 @@ var (
 	db            = dynamodb.New(awsSession)
 )
 
-// BodyRequest is the expected body of the create group request
-type BodyRequest struct {
-	Nickname string `json:"nickname"`
-}
-
-// Group is the group DTO
-type Group struct {
-	ID       string   `json:"id"`
-	Nickname string   `json:"nickname"`
-	Owner    string   `json:"owner"`
-	Members  []string `json:"members" dynamodbav:"members,stringset"`
-}
-
-func createItem(group Group) error {
-	// create attribute value
-	av, _ := dynamodbattribute.MarshalMap(group)
-
-	// create query
-	input := &dynamodb.PutItemInput{
-		TableName:    aws.String(groupTable),
-		Item:         av,
-		ReturnValues: aws.String("NONE"),
+func removeUserFromGroup(userID, groupID string) error {
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(groupTable),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				S: aws.String(groupID),
+			},
+		},
+		ExpressionAttributeNames: map[string]*string{
+			"#M": aws.String("members"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":m": {
+				SS: []*string{aws.String(userID)},
+			},
+		},
+		UpdateExpression: aws.String("DELETE #M :m"),
+		ReturnValues:     aws.String("NONE"),
 	}
 
 	// update
-	_, err := db.PutItem(input)
+	_, err := db.UpdateItem(input)
 
 	// handle errors
 	if err != nil {
@@ -74,24 +68,14 @@ func createItem(group Group) error {
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	// unmarshall request body to BodyRequest struct
-	bodyRequest := BodyRequest{}
-	err := json.Unmarshal([]byte(request.Body), &bodyRequest)
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil
-	}
+	// get group and user IDs from pathParameters
+	groupID := request.PathParameters["groupId"]
+	userID := request.PathParameters["userId"]
 
-	// create
-	userID := "a2972d18-2862-4eff-9af5-49a177455cb5"
-	g := Group{
-		ID:       "fd4f08ef-99da-4832-ad0c-0e9d2de6af48",
-		Nickname: bodyRequest.Nickname,
-		Owner:    userID,
-		Members:  []string{userID},
-	}
-	createErr := createItem(g)
-	if createErr != nil {
-		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: 500}, nil
+	// remove userId from group
+	updateErr := removeUserFromGroup(userID, groupID)
+	if updateErr != nil {
+		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: 500}, nil
 	}
 
 	// create and send the response

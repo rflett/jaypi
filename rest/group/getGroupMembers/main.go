@@ -44,7 +44,7 @@ type Group struct {
 	ID       string   `json:"id"`
 	Nickname string   `json:"nickname"`
 	Owner    string   `json:"owner"`
-	Members  []string `json:"members"`
+	Members  []string `json:"members" dynamodbav:"members,stringset"`
 }
 
 func getUsers(userIDs []string) ([]user, error) {

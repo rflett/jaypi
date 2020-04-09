@@ -79,3 +79,17 @@ functions:
       - http:
           path: group/invite
           method: get
+
+  addMember:
+    handler: bin/addMember
+    events:
+      - http:
+          path: group/member
+          method: post
+
+  removeMember:
+    handler: bin/removeMember
+    events:
+      - http:
+          path: group/member/{groupId}/{userId}
+          method: delete
