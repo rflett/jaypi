@@ -72,3 +72,10 @@ functions:
       - http:
           path: group/invite
           method: post
+
+  decodeInvite:
+    handler: bin/decodeInvite
+    events:
+      - http:
+          path: group/invite
+          method: get
