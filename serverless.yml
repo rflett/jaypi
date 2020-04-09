@@ -44,3 +44,17 @@ functions:
       - http:
           path: group
           method: post
+
+  getGroup:
+    handler: bin/getGroup
+    events:
+      - http:
+          path: group/{groupId}
+          method: get
+
+  getGroupMembers:
+    handler: bin/getGroupMembers
+    events:
+      - http:
+          path: group/members{groupId}
+          method: get
