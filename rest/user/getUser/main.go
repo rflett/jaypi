@@ -41,7 +41,7 @@ func getItem(userID string) (user, error) {
 	// create query
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
-			"ID": {
+			"id": {
 				S: aws.String(userID),
 			},
 		},
