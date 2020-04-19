@@ -9,7 +9,7 @@ import (
 
 // Song is a song in the hottest 100 that can be voted on
 type Song struct {
-	ID     int    `json:"id"`
+	ID     string `json:"id"`
 	Artist string `json:"artist"`
 	Title  string `json:"title"`
 }
@@ -20,12 +20,12 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// these might go in redis or something as they won't change and will be queried heavliy
 	songs := []Song{
 		Song{
-			ID:     1,
+			ID:     "1",
 			Artist: "Dream Theater",
 			Title:  "Raise The Knife",
 		},
 		Song{
-			ID:     2,
+			ID:     "2",
 			Artist: "Opeth",
 			Title:  "When",
 		},

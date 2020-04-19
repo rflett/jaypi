@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,37 +19,31 @@ var (
 	db            = dynamodb.New(awsSession)
 )
 
-// Guess is a song guess
-type Guess struct {
-	Artist string `json:"artist"`
-	Song   string `json:"song"`
-}
-
 // BodyRequest is the expected body of the update user guesses request
 type BodyRequest struct {
-	Guesses []Guess `json:"guesses"`
+	Guesses []string `json:"guesses" dynamodbav:"guesses,stringset"`
 }
 
 func updateItem(userID string, body BodyRequest) error {
-	// marshall guesses into a dynamdb attribute
-	// bodyAsList := []BodyRequest{body}
-	// av, _ := dynamodbattribute.MarshalList(bodyAsList)
-	av, _ := dynamodbattribute.MarshalList(body.Guesses)
+	var songSS []*string
+	for _, songID := range body.Guesses {
+		songSS = append(songSS, aws.String(songID))
+	}
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String(userTable),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				S: aws.String(userID),
+			},
+		},
 		ExpressionAttributeNames: map[string]*string{
 			"#G": aws.String("guesses"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":g": {
-				L: av,
-			},
-		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(userID),
+				SS: songSS,
 			},
 		},
 		UpdateExpression: aws.String("SET #G = :g"),

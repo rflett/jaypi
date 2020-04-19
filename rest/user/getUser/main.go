@@ -21,19 +21,55 @@ var (
 	db            = dynamodb.New(awsSession)
 )
 
-// Guess is a song guess consisting of an artist and song name
-type Guess struct {
+// Song is a song Song consisting of an artist and song name
+type Song struct {
+	ID     string `json:"id"`
 	Artist string `json:"artist"`
-	Song   string `json:"song"`
+	Title  string `json:"title"`
 }
 
 // user is a user of the application
 type user struct {
-	ID        string  `json:"id"`
-	FirstName string  `json:"firstName"`
-	LastName  string  `json:"lastName"`
-	Nickname  string  `json:"nickname"`
-	Guesses   []Guess `json:"guesses"`
+	ID        string `json:"id"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Nickname  string `json:"nickname"`
+	Guesses   []Song `json:"guesses"`
+}
+
+// Item is a db item
+type Item struct {
+	ID        string   `json:"id"`
+	FirstName string   `json:"firstName"`
+	LastName  string   `json:"lastName"`
+	Nickname  string   `json:"nickname"`
+	Guesses   []string `json:"guesses" dynamodbav:"guesses,stringset"`
+}
+
+func getSongs(SongIDs []string) []Song {
+	songs := []Song{
+		Song{
+			ID:     "1",
+			Artist: "Dream Theater",
+			Title:  "Raise The Knife",
+		},
+		Song{
+			ID:     "2",
+			Artist: "Opeth",
+			Title:  "When",
+		},
+		Song{
+			ID:     "3",
+			Artist: "Bloodbath",
+			Title:  "Eaten",
+		},
+	}
+
+	var ret []Song
+	for idx := range SongIDs {
+		ret = append(ret, songs[idx])
+	}
+	return ret
 }
 
 func getItem(userID string) (user, error) {
@@ -73,14 +109,23 @@ func getItem(userID string) (user, error) {
 	}
 
 	// unmarshal item into the user struct
-	item := user{}
+	item := Item{}
 	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal Record, %v", err)
 		return user{}, errors.New("Failed to unmarshall Record to user")
 	}
 
-	return item, nil
+	songs := getSongs(item.Guesses)
+	thisUser := user{
+		ID:        item.ID,
+		FirstName: item.FirstName,
+		LastName:  item.LastName,
+		Nickname:  item.Nickname,
+		Guesses:   songs,
+	}
+
+	return thisUser, nil
 }
 
 // Handler is our handle on life
