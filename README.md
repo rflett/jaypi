@@ -1,10 +1,10 @@
-# JJJ API
+# JAYPI (jay-pee-eye)
+
+An API built on Golang for the soon to be JJJ countdown leaderboard app.
 
 ## Development
 
-It's a serverless golang project, so at a minimum you'll need:
-
-  - Go 1.13+
+  - Go 1.14+
   - Serverless
   - Docker
 
@@ -18,7 +18,8 @@ Build it first with `./build.sh` then start the function with its corresponding 
 
 ```bash
 # build the binaries used by serverless
-./build.sh
+./build.
+
 # invoke the function you want with its mock data
 serverless invoke local -f getUser --path mock/user/get.json
 ```
