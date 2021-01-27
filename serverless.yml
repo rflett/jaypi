@@ -4,6 +4,14 @@ frameworkVersion: '>=1.28.0 <2.0.0'
 provider:
   name: aws
   runtime: go1.x
+  region: ap-southeast-2
+  stage: ${opt:staging, 'dev'}
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - dynamodb:*
+      Resource: "*"
+  # uncomment these for local testing
   environment:
     AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
     AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
@@ -17,8 +25,37 @@ package:
     - ./bin/**
 
 functions:
+
+  # GUESSES and SONGS
+  getSongs:
+    handler: bin/getSongs
+    name: get-songs-${self:provider.stage}
+    description: "Returns all the songs for guessing"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: songs
+          method: get
+
+  updateGuesses:
+    handler: bin/updateGuesses
+    name: update-guesses-${self:provider.stage}
+    description: "Updates the song guesses for a user"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: user/guesses/{userId}
+          method: post
+
+  # USERS
   getUser:
     handler: bin/getUser
+    name: get-user-${self:provider.stage}
+    description: "Retrieves a user"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: user/{userId}
@@ -26,20 +63,22 @@ functions:
 
   updateUser:
     handler: bin/updateUser
+    name: update-user-${self:provider.stage}
+    description: "Updates a user"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: user/{userId}
           method: put
 
-  updateGuesses:
-    handler: bin/updateGuesses
-    events:
-      - http:
-          path: user/guesses/{userId}
-          method: post
-
+  # GROUPS
   createGroup:
     handler: bin/createGroup
+    name: create-group-${self:provider.stage}
+    description: "Creates a group"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: group
@@ -47,27 +86,33 @@ functions:
 
   getGroup:
     handler: bin/getGroup
+    name: get-group-${self:provider.stage}
+    description: "Retrieves group metadata"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: group/{groupId}
           method: get
 
-  getGroupMembers:
-    handler: bin/getGroupMembers
-    events:
-      - http:
-          path: group/members{groupId}
-          method: get
-
   updateGroup:
     handler: bin/updateGroup
+    name: update-group-${self:provider.stage}
+    description: "Updates the metadata for a group"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: group/{groupId}
           method: put
 
+  # INVITES
   createInvite:
     handler: bin/createInvite
+    name: create-invite-${self:provider.stage}
+    description: "Generates a link for inviting friends"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: group/invite
@@ -75,21 +120,45 @@ functions:
 
   decodeInvite:
     handler: bin/decodeInvite
+    name: decode-invite-${self:provider.stage}
+    description: "Returns a group ID from an invite code"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
           path: group/invite
           method: get
 
-  addMember:
-    handler: bin/addMember
+  # MEMBERS
+  getGroupMembers:
+    handler: bin/getGroupMembers
+    name: get-group-members-${self:provider.stage}
+    description: "Get the members of a group"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
-          path: group/member
+          path: group/{groupId}/member
+          method: get
+
+  addMember:
+    handler: bin/addMember
+    name: add-member-${self:provider.stage}
+    description: "Adds a user to a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group/{groupId}/member/{userId}
           method: post
 
   removeMember:
     handler: bin/removeMember
+    name: remove-member-${self:provider.stage}
+    description: "Removers a user from a group"
+    memorySize: 128
+    timeout: 10
     events:
       - http:
-          path: group/member/{groupId}/{userId}
+          path: group/{groupId}/member/{userId}
           method: delete

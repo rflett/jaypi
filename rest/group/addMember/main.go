@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -18,13 +17,6 @@ var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
 )
-
-// RequestDto is the expected request body
-type RequestDto struct {
-	Code    string `json:"code"`
-	GroupID string `json:"groupId"`
-	UserID  string `json:"userId"`
-}
 
 func addUserToGroup(userID, groupID string) error {
 	// update query
@@ -77,14 +69,11 @@ func addUserToGroup(userID, groupID string) error {
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
 	// unmarshall request body to RequestDto struct
-	requestDto := RequestDto{}
-	err := json.Unmarshal([]byte(request.Body), &requestDto)
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil
-	}
+	userID := request.PathParameters["userId"]
+	groupID := request.PathParameters["groupId"]
 
 	// add userId to group
-	updateErr := addUserToGroup(requestDto.UserID, requestDto.GroupID)
+	updateErr := addUserToGroup(userID, groupID)
 	if updateErr != nil {
 		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: 500}, nil
 	}
