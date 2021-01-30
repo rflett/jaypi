@@ -13,10 +13,11 @@ provider:
       Resource: "*"
   # uncomment these for local testing
   environment:
-    AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
-    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
-    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
-    AWS_SECURITY_TOKEN: ${env:AWS_SECURITY_TOKEN}
+    GROUP_TABLE: groups
+#    AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
+#    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
+#    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
+#    AWS_SECURITY_TOKEN: ${env:AWS_SECURITY_TOKEN}
 
 package:
   exclude:

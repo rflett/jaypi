@@ -3,6 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/google/uuid"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
@@ -14,16 +18,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-const groupTable = "groups"
-
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
+	groupTable = os.Getenv("GROUP_TABLE")
 )
 
 // BodyRequest is the expected body of the create group request
 type BodyRequest struct {
 	Nickname string `json:"nickname"`
+	Owner    string `json:"owner"`
 }
 
 // Group is the group DTO
@@ -34,9 +38,18 @@ type Group struct {
 	Members  []string `json:"members" dynamodbav:"members,stringset"`
 }
 
-func createItem(group Group) error {
+func (g *Group) validate() error {
+	// check that the owner doesn't already have a group
+	// check the nickname is valid
+	return nil
+}
+
+func (g *Group) create() error {
+	// add the owner as the only original member
+	g.Members = []string{g.Owner}
+
 	// create attribute value
-	av, _ := dynamodbattribute.MarshalMap(group)
+	av, _ := dynamodbattribute.MarshalMap(g)
 
 	// create query
 	input := &dynamodb.PutItemInput{
@@ -78,24 +91,27 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	bodyRequest := BodyRequest{}
 	err := json.Unmarshal([]byte(request.Body), &bodyRequest)
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
 	// create
-	userID := "a2972d18-2862-4eff-9af5-49a177455cb5"
 	g := Group{
-		ID:       "fd4f08ef-99da-4832-ad0c-0e9d2de6af48",
+		ID:       uuid.NewString(),
 		Nickname: bodyRequest.Nickname,
-		Owner:    userID,
-		Members:  []string{userID},
+		Owner:    bodyRequest.Owner,
 	}
-	createErr := createItem(g)
+	validationErr := g.validate()
+	if validationErr != nil {
+		return events.APIGatewayProxyResponse{Body: validationErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	}
+
+	createErr := g.create()
 	if createErr != nil {
-		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: 500}, nil
+		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: http.StatusInternalServerError}, nil
 	}
 
 	// create and send the response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: 204}, nil
+	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
 }
 
 func main() {

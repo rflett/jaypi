@@ -18,7 +18,7 @@ Build it first with `./build.sh` then start the function with its corresponding 
 
 ```bash
 # build the binaries used by serverless
-./build.
+./build.sh
 
 # invoke the function you want with its mock data
 serverless invoke local -f getUser --path mock/user/get.json

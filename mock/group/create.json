@@ -2,5 +2,5 @@
   "resource": "/",
   "path": "/group",
   "httpMethod": "POST",
-  "body": "{\"nickname\": \"Ryan's Group\"}"
+  "body": "{\"nickname\": \"Norto's Group\", \"owner\": \"a2972d18-2862-4eff-9af5-49a177455cb5\"}"
 }
