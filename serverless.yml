@@ -14,6 +14,7 @@ provider:
   # uncomment these for local testing
   environment:
     GROUP_TABLE: groups
+    USER_TABLE: users
 #    AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
 #    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
 #    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}

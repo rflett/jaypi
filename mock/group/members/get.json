@@ -1,0 +1,8 @@
+{
+  "resource": "/",
+  "path": "/group/member",
+  "httpMethod": "GET",
+  "pathParameters": {
+    "groupId": "fd4f08ef-99da-4832-ad0c-0e9d2de6af48"
+  }
+}
