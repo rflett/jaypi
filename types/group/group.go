@@ -113,6 +113,7 @@ func (g *Group) Add() (error error, status int) {
 	return nil, http.StatusCreated
 }
 
+// Get a Group from the database
 func (g *Group) Get() (error error, status int) {
 	// get query
 	input := &dynamodb.GetItemInput{
@@ -163,4 +164,57 @@ func (g *Group) Get() (error error, status int) {
 	}
 
 	return nil, http.StatusOK
+}
+
+// RemoveMember from a Group
+func (g *Group) RemoveMember(member string) (error error, status int) {
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(groupTable),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				S: aws.String(g.ID),
+			},
+		},
+		ExpressionAttributeNames: map[string]*string{
+			"#M": aws.String("members"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":m": {
+				SS: []*string{aws.String(member)},
+			},
+		},
+		UpdateExpression: aws.String("DELETE #M :m"),
+		ReturnValues:     aws.String("NONE"),
+	}
+
+	// update
+	logger.Log.Info().Str("groupID", g.ID).Str("groupMember", member).Msg(fmt.Sprintf("removing member from group"))
+	_, err := db.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("groupID", g.ID).Str("groupMember", member).Msg("error removing member from group")
+			return aerr, responseStatus
+		} else {
+			logger.Log.Error().Err(aerr).Str("groupID", g.ID).Str("groupMember", member).Msg("error removing member from group")
+			return err, http.StatusInternalServerError
+		}
+	}
+
+	return nil, http.StatusNoContent
 }
