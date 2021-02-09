@@ -8,9 +8,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	logger "jjj.rflett.com/jjj-api/log"
+	"jjj.rflett.com/jjj-api/types/groupCode"
 	"net/http"
 	"os"
-	logger "jjj.rflett.com/jjj-api/log"
 )
 
 var (
@@ -21,10 +22,11 @@ var (
 
 // Group is a collection of users that can view each others song guesses
 type Group struct {
-	ID       string   `json:"id"`
-	Nickname string   `json:"nickname"`
-	Owner    string   `json:"owner"`
-	Members  []string `json:"members" dynamodbav:"members,stringset"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Code    string   `json:"code"`
+	Owner   string   `json:"owner"`
+	Members []string `json:"members" dynamodbav:"members,stringset"`
 }
 
 func (g *Group) validate() (bool, *string) {
@@ -90,6 +92,16 @@ func (g *Group) Add() (error error, status int) {
 
 	// add the owner as the only original member
 	g.Members = []string{g.Owner}
+
+	// create the groupCode
+	code := groupCode.GroupCode{
+		GroupID: g.ID,
+	}
+	c, codeErr := code.New()
+	if codeErr != nil {
+		return codeErr, http.StatusInternalServerError
+	}
+	g.Code = c
 
 	// create attribute value
 	av, _ := dynamodbattribute.MarshalMap(g)
@@ -212,6 +224,59 @@ func (g *Group) RemoveMember(member string) (error error, status int) {
 			return aerr, responseStatus
 		} else {
 			logger.Log.Error().Err(aerr).Str("groupID", g.ID).Str("groupMember", member).Msg("error removing member from group")
+			return err, http.StatusInternalServerError
+		}
+	}
+
+	return nil, http.StatusNoContent
+}
+
+// AddMember adds a user to a Group
+func (g *Group) AddMember(member string) (error error, status int) {
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(groupTable),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				S: aws.String(g.ID),
+			},
+		},
+		ExpressionAttributeNames: map[string]*string{
+			"#M": aws.String("members"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":m": {
+				SS: []*string{aws.String(member)},
+			},
+		},
+		UpdateExpression: aws.String("ADD #M :m"),
+		ReturnValues:     aws.String("NONE"),
+	}
+
+	// update
+	logger.Log.Info().Str("groupID", g.ID).Str("groupMember", member).Msg(fmt.Sprintf("adding member to group"))
+	_, err := db.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("groupID", g.ID).Str("groupMember", member).Msg("error adding member to group")
+			return aerr, responseStatus
+		} else {
+			logger.Log.Error().Err(aerr).Str("groupID", g.ID).Str("groupMember", member).Msg("error adding member to group")
 			return err, http.StatusInternalServerError
 		}
 	}

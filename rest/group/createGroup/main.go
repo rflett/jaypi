@@ -12,8 +12,8 @@ import (
 
 // BodyRequest is the expected body of the create group request
 type BodyRequest struct {
-	Nickname string `json:"nickname"`
-	Owner    string `json:"owner"`
+	Name  string `json:"name"`
+	Owner string `json:"owner"`
 }
 
 // Handler is our handle on life
@@ -28,9 +28,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// create
 	g := group.Group{
-		ID:       uuid.NewString(),
-		Nickname: bodyRequest.Nickname,
-		Owner:    bodyRequest.Owner,
+		ID:    uuid.NewString(),
+		Name:  bodyRequest.Name,
+		Owner: bodyRequest.Owner,
 	}
 	createErr, createStatus := g.Add()
 	if createErr != nil {

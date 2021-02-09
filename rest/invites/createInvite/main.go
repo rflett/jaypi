@@ -10,7 +10,7 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
-const inviteLink = "https://www.fuckYouNorto.com/invite?code=%s"
+const inviteLink = "https://www.fuckYouNorto.com/invite?groupCode=%s"
 
 // RequestDto is the expected body in the request
 type RequestDto struct {
@@ -36,7 +36,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// make link
 	link := fmt.Sprintf(inviteLink, requestDto.UserID)
 
-	// make qr code
+	// make qr groupCode
 	qrCode, err := qrcode.Encode(link, qrcode.Low, 256)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil

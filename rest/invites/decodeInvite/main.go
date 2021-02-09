@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-const inviteLink = "https://www.fuckYouNorto.com/invite?code=%s"
+const inviteLink = "https://www.fuckYouNorto.com/invite?groupCode=%s"
 
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
@@ -80,8 +80,8 @@ func getUserGroupID(userID string) (ResponseDto, error) {
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	// get code from request
-	code := request.QueryStringParameters["code"]
+	// get groupCode from request
+	code := request.QueryStringParameters["groupCode"]
 
 	// get the user's group id
 	responseDto, _ := getUserGroupID(code)

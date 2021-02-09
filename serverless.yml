@@ -15,6 +15,7 @@ provider:
   environment:
     GROUP_TABLE: groups
     USER_TABLE: users
+    GROUP_CODE_TABLE: group-codes
 #    AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
 #    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
 #    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
@@ -123,7 +124,7 @@ functions:
   decodeInvite:
     handler: bin/decodeInvite
     name: decode-invite-${self:provider.stage}
-    description: "Returns a group ID from an invite code"
+    description: "Returns a group ID from an invite groupCode"
     memorySize: 128
     timeout: 10
     events:

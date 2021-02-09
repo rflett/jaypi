@@ -5,5 +5,5 @@
   "pathParameters": {
     "groupId": "fd4f08ef-99da-4832-ad0c-0e9d2de6af48"
   },
-  "body": "{\"nickname\": \"flettel's group\", \"owner\": \"a2972d18-2862-4eff-9af5-49a177455cb5\"}"
+  "body": "{\"name\": \"flettel's group\", \"owner\": \"a2972d18-2862-4eff-9af5-49a177455cb5\"}"
 }

@@ -15,14 +15,14 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	groupID := request.PathParameters["groupId"]
 
 	// get the group from the database
-	group := group.Group{ID: groupID}
-	err, getStatus := group.Get()
+	newGroup := group.Group{ID: groupID}
+	err, getStatus := newGroup.Get()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: getStatus}, nil
 	}
 
 	// create and send the response
-	body, _ := json.Marshal(group)
+	body, _ := json.Marshal(newGroup)
 	headers := map[string]string{"Content-Type": "application/json"}
 	return events.APIGatewayProxyResponse{Body: string(body), StatusCode: getStatus, Headers: headers}, nil
 }

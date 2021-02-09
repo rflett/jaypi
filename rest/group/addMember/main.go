@@ -1,69 +1,10 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"jjj.rflett.com/jjj-api/types/group"
 )
-
-const groupTable = "groups"
-
-var (
-	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
-	db            = dynamodb.New(awsSession)
-)
-
-func addUserToGroup(userID, groupID string) error {
-	// update query
-	input := &dynamodb.UpdateItemInput{
-		TableName: aws.String(groupTable),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(groupID),
-			},
-		},
-		ExpressionAttributeNames: map[string]*string{
-			"#M": aws.String("members"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":m": {
-				SS: []*string{aws.String(userID)},
-			},
-		},
-		UpdateExpression: aws.String("ADD #M :m"),
-		ReturnValues:     aws.String("NONE"),
-	}
-
-	// update
-	_, err := db.UpdateItem(input)
-
-	// handle errors
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				fmt.Println(dynamodb.ErrCodeProvisionedThroughputExceededException, aerr.Error())
-			case dynamodb.ErrCodeResourceNotFoundException:
-				fmt.Println(dynamodb.ErrCodeResourceNotFoundException, aerr.Error())
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				fmt.Println(dynamodb.ErrCodeRequestLimitExceeded, aerr.Error())
-			case dynamodb.ErrCodeInternalServerError:
-				fmt.Println(dynamodb.ErrCodeInternalServerError, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-		return err
-	}
-	return nil
-}
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -72,14 +13,15 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	userID := request.PathParameters["userId"]
 	groupID := request.PathParameters["groupId"]
 
-	// add userId to group
-	updateErr := addUserToGroup(userID, groupID)
-	if updateErr != nil {
-		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: 500}, nil
+	// add user to group
+	g := group.Group{ID: groupID}
+	err, addStatus := g.AddMember(userID)
+	if err != nil {
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: addStatus}, nil
 	}
 
 	// create and send the response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: 204}, nil
+	return events.APIGatewayProxyResponse{Body: "", StatusCode: addStatus}, nil
 }
 
 func main() {
