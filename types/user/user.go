@@ -76,6 +76,13 @@ func (u *User) Update() (status int, error error) {
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	u.UpdatedAt = &updatedAt
 
+	pk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+	}
+	sk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", SortKey, u.UserID)),
+	}
+
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
@@ -83,6 +90,8 @@ func (u *User) Update() (status int, error error) {
 			"#UA": aws.String("updatedAt"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": &pk,
+			":sk": &sk,
 			":nn": {
 				S: aws.String(u.NickName),
 			},
@@ -91,16 +100,13 @@ func (u *User) Update() (status int, error error) {
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SortKey, u.UserID)),
-			},
+			"PK": &pk,
+			"SK": &sk,
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        aws.String(table),
-		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
+		ReturnValues:        aws.String("NONE"),
+		TableName:           aws.String(table),
+		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
+		UpdateExpression:    aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
 	_, err := db.UpdateItem(input)
@@ -113,6 +119,8 @@ func (u *User) Update() (status int, error error) {
 			case dynamodb.ErrCodeProvisionedThroughputExceededException:
 				responseStatus = http.StatusTooManyRequests
 			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeConditionalCheckFailedException:
 				responseStatus = http.StatusNotFound
 			case dynamodb.ErrCodeRequestLimitExceeded:
 				responseStatus = http.StatusTooManyRequests
