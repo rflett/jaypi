@@ -3,7 +3,7 @@
   "path": "/user",
   "httpMethod": "PUT",
   "pathParameters": {
-    "userId": "a2972d18-2862-4eff-9af5-49a177455cb5"
+    "userId": "5d784f0b-695e-4c5a-86c8-ffcd3ca9aacd"
   },
-  "body": "{\"nickname\": \"flettel\"}"
+  "body": "{\"nickName\": \"flettel\"}"
 }

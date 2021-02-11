@@ -9,30 +9,30 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// RequestBody is the expected body of the request
-type RequestBody struct {
-	FirstName  string `json:"firstName"`
-	LastName string `json:"lastName"`
-	NickName string `json:"nickName"`
-	Email string `json:"email"`
+// requestBody is the expected body of the request
+type requestBody struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	NickName  string `json:"nickName"`
+	Email     string `json:"email"`
 }
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	// unmarshall request body to RequestBody struct
-	requestBody := RequestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &requestBody)
+	// unmarshall request body to requestBody struct
+	reqBody := requestBody{}
+	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
 	if jsonErr != nil {
 		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
 	// create
 	u := user.User{
-		FirstName: requestBody.FirstName,
-		LastName:  requestBody.LastName,
-		NickName:  requestBody.NickName,
-		Email:     &requestBody.Email,
+		FirstName: reqBody.FirstName,
+		LastName:  reqBody.LastName,
+		NickName:  reqBody.NickName,
+		Email:     &reqBody.Email,
 	}
 	createStatus, createErr := u.Create()
 	if createErr != nil {

@@ -22,20 +22,20 @@ const (
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
-	table = os.Getenv("JAYPI_TABLE")
+	table         = os.Getenv("JAYPI_TABLE")
 )
 
 // User is a User of the application
 type User struct {
-	PK        string `json:"-" dynamodbav:"PK"`
-	SK        string `json:"-" dynamodbav:"SK"`
-	UserID    string `json:"userID"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	NickName  string `json:"nickname"`
+	PK        string  `json:"-" dynamodbav:"PK"`
+	SK        string  `json:"-" dynamodbav:"SK"`
+	UserID    string  `json:"userID"`
+	FirstName string  `json:"firstName"`
+	LastName  string  `json:"lastName"`
+	NickName  string  `json:"nickName"`
 	Email     *string `json:"email"`
-	Points    int    `json:"points"`
-	CreatedAt string `json:"createdAt"`
+	Points    int     `json:"points"`
+	CreatedAt string  `json:"createdAt"`
 	UpdatedAt *string `json:"updatedAt"`
 }
 
@@ -68,6 +68,68 @@ func (u *User) Create() (status int, error error) {
 
 	logger.Log.Info().Str("userID", u.UserID).Msg("Successfully added user to table")
 	return http.StatusCreated, nil
+}
+
+// Update the user's attributes
+func (u *User) Update() (status int, error error) {
+	// set fields
+	updatedAt := time.Now().UTC().Format(time.RFC3339)
+	u.UpdatedAt = &updatedAt
+
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#NN": aws.String("nickName"),
+			"#UA": aws.String("updatedAt"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":nn": {
+				S: aws.String(u.NickName),
+			},
+			":ua": {
+				S: aws.String(*u.UpdatedAt),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SortKey, u.UserID)),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        aws.String(table),
+		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
+	}
+
+	_, err := db.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("userID", u.UserID).Msg("error updating user")
+			return responseStatus, aerr
+		} else {
+			logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error updating user")
+			return http.StatusInternalServerError, err
+		}
+	}
+
+	return http.StatusNoContent, nil
 }
 
 // Get the user from the table

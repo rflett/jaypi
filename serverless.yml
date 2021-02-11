@@ -61,6 +61,9 @@ functions:
       - http:
           path: user
           method: post
+          request:
+            schema:
+              application/json: ${file(schemas/user/create.json)}
 
   getUser:
     handler: bin/getUser
@@ -73,17 +76,20 @@ functions:
           path: user/{userId}
           method: get
 
-#  updateUser:
-#    handler: bin/updateUser
-#    name: update-user-${self:provider.stage}
-#    description: "Updates a user"
-#    memorySize: 128
-#    timeout: 10
-#    events:
-#      - http:
-#          path: user/{userId}
-#          method: put
-#
+  updateUser:
+    handler: bin/updateUser
+    name: update-user-${self:provider.stage}
+    description: "Update a user"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: user/{userId}
+          method: put
+          request:
+            schema:
+              application/json: ${file(schemas/user/update.json)}
+
 #  # GROUPS
 #  createGroup:
 #    handler: bin/createGroup
