@@ -1,56 +1,92 @@
 package user
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/google/uuid"
 	logger "jjj.rflett.com/jjj-api/log"
-	"jjj.rflett.com/jjj-api/types/guess"
 	"net/http"
 	"os"
+	"time"
+)
+
+const (
+	PrimaryKey = "USER"
+	SortKey    = "#PROFILE"
 )
 
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
-	userTable = os.Getenv("USER_TABLE")
+	table = os.Getenv("JAYPI_TABLE")
 )
 
 // User is a User of the application
 type User struct {
-	ID        string  `json:"id"`
-	FirstName string  `json:"firstName"`
-	LastName  string  `json:"lastName"`
-	Nickname  string  `json:"nickname"`
-	Guesses   []guess.Guess `json:"guesses"`
+	PK        string `json:"-" dynamodbav:"PK"`
+	SK        string `json:"-" dynamodbav:"SK"`
+	UserID    string `json:"userID"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	NickName  string `json:"nickname"`
+	Email     *string `json:"email"`
+	Points    int    `json:"points"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt *string `json:"updatedAt"`
 }
 
-func GetAll(userIDs []string) (error error, status int, users []*User) {
-	var dbKeys []map[string]*dynamodb.AttributeValue
+// Create the user and save them to the database
+func (u *User) Create() (status int, error error) {
+	// set fields
+	u.UserID = uuid.NewString()
+	u.PK = fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)
+	u.SK = fmt.Sprintf("%s#%s", SortKey, u.UserID)
+	u.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
-	for _, userID := range userIDs {
-		av := dynamodb.AttributeValue{
-			S: aws.String(userID),
-		}
-		avMap := map[string]*dynamodb.AttributeValue{
-			"id": &av,
-		}
-		dbKeys = append(dbKeys, avMap)
+	// create item
+	av, _ := dynamodbattribute.MarshalMap(u)
+
+	// create input
+	input := &dynamodb.PutItemInput{
+		TableName:    aws.String(table),
+		Item:         av,
+		ReturnValues: aws.String("NONE"),
 	}
 
-	input := &dynamodb.BatchGetItemInput{
-		RequestItems: map[string]*dynamodb.KeysAndAttributes{
-			"users": {
-				Keys: dbKeys,
+	// add to table
+	_, err := db.PutItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Error adding user to table")
+		return http.StatusInternalServerError, err
+	}
+
+	logger.Log.Info().Str("userID", u.UserID).Msg("Successfully added user to table")
+	return http.StatusCreated, nil
+}
+
+// Get the user from the table
+func Get(userID string) (user User, status int, error error) {
+	// get query
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, userID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SortKey, userID)),
 			},
 		},
+		TableName: aws.String(table),
 	}
 
-	// getItems
-	logger.Log.Info().Msg("getting users from the database")
-	result, err := db.BatchGetItem(input)
+	// getItem
+	result, err := db.GetItem(input)
 
 	// handle errors
 	if err != nil {
@@ -68,22 +104,23 @@ func GetAll(userIDs []string) (error error, status int, users []*User) {
 			default:
 				responseStatus = http.StatusInternalServerError
 			}
-			logger.Log.Error().Err(aerr).Msg("error getting users from dynamo")
-			return aerr, responseStatus, []*User{}
+			logger.Log.Error().Err(aerr).Str("userID", userID).Msg("error getting user from table")
+			return User{}, responseStatus, aerr
 		} else {
-			logger.Log.Error().Err(aerr).Msg("error getting users from dynamo")
-			return err, http.StatusInternalServerError, []*User{}
+			logger.Log.Error().Err(err).Str("userID", userID).Msg("error getting user from table")
+			return User{}, http.StatusInternalServerError, err
 		}
 	}
 
-	// unmarshal item into []User
-	var response []*User
-
-	for _, av := range result.Responses[userTable] {
-		var item User
-		_ = dynamodbattribute.UnmarshalMap(av, &item)
-		response = append(response, &item)
+	if len(result.Item) == 0 {
+		return User{}, http.StatusNotFound, nil
 	}
 
-	return nil, http.StatusOK, response
+	// unmarshal item into struct
+	err = dynamodbattribute.UnmarshalMap(result.Item, &user)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", userID).Msg("failed to unmarshal dynamo item to user")
+	}
+
+	return user, http.StatusOK, nil
 }

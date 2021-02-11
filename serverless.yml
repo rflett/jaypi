@@ -13,9 +13,7 @@ provider:
       Resource: "*"
   # uncomment these for local testing
   environment:
-    GROUP_TABLE: groups
-    USER_TABLE: users
-    GROUP_CODE_TABLE: group-codes
+    JAYPI_TABLE: jaypi
 #    AWS_SESSION_TOKEN: ${env:AWS_SESSION_TOKEN}
 #    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
 #    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
@@ -29,34 +27,45 @@ package:
 
 functions:
 
-  # GUESSES and SONGS
-  getSongs:
-    handler: bin/getSongs
-    name: get-songs-${self:provider.stage}
-    description: "Returns all the songs for guessing"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: songs
-          method: get
-
-  updateGuesses:
-    handler: bin/updateGuesses
-    name: update-guesses-${self:provider.stage}
-    description: "Updates the song guesses for a user"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: user/guesses/{userId}
-          method: post
+#  # GUESSES and SONGS
+#  getSongs:
+#    handler: bin/getSongs
+#    name: get-songs-${self:provider.stage}
+#    description: "Returns all the songs for guessing"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: songs
+#          method: get
+#
+#  updateGuesses:
+#    handler: bin/updateGuesses
+#    name: update-guesses-${self:provider.stage}
+#    description: "Updates the song guesses for a user"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: user/guesses/{userId}
+#          method: post
 
   # USERS
+  createUser:
+    handler: bin/createUser
+    name: create-user-${self:provider.stage}
+    description: "Create a user"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: user
+          method: post
+
   getUser:
     handler: bin/getUser
     name: get-user-${self:provider.stage}
-    description: "Retrieves a user"
+    description: "Get a user"
     memorySize: 128
     timeout: 10
     events:
@@ -64,104 +73,104 @@ functions:
           path: user/{userId}
           method: get
 
-  updateUser:
-    handler: bin/updateUser
-    name: update-user-${self:provider.stage}
-    description: "Updates a user"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: user/{userId}
-          method: put
-
-  # GROUPS
-  createGroup:
-    handler: bin/createGroup
-    name: create-group-${self:provider.stage}
-    description: "Creates a group"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group
-          method: post
-
-  getGroup:
-    handler: bin/getGroup
-    name: get-group-${self:provider.stage}
-    description: "Retrieves group metadata"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/{groupId}
-          method: get
-
-  updateGroup:
-    handler: bin/updateGroup
-    name: update-group-${self:provider.stage}
-    description: "Updates the metadata for a group"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/{groupId}
-          method: put
-
-  # INVITES
-  createInvite:
-    handler: bin/createInvite
-    name: create-invite-${self:provider.stage}
-    description: "Generates a link for inviting friends"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/invite
-          method: post
-
-  decodeInvite:
-    handler: bin/decodeInvite
-    name: decode-invite-${self:provider.stage}
-    description: "Returns a group ID from an invite groupCode"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/invite
-          method: get
-
-  # MEMBERS
-  getGroupMembers:
-    handler: bin/getGroupMembers
-    name: get-group-members-${self:provider.stage}
-    description: "Get the members of a group"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/{groupId}/member
-          method: get
-
-  addMember:
-    handler: bin/addMember
-    name: add-member-${self:provider.stage}
-    description: "Adds a user to a group"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/{groupId}/member/{userId}
-          method: post
-
-  removeMember:
-    handler: bin/removeMember
-    name: remove-member-${self:provider.stage}
-    description: "Removers a user from a group"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: group/{groupId}/member/{userId}
-          method: delete
+#  updateUser:
+#    handler: bin/updateUser
+#    name: update-user-${self:provider.stage}
+#    description: "Updates a user"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: user/{userId}
+#          method: put
+#
+#  # GROUPS
+#  createGroup:
+#    handler: bin/createGroup
+#    name: create-group-${self:provider.stage}
+#    description: "Creates a group"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group
+#          method: post
+#
+#  getGroup:
+#    handler: bin/getGroup
+#    name: get-group-${self:provider.stage}
+#    description: "Retrieves group metadata"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/{groupId}
+#          method: get
+#
+#  updateGroup:
+#    handler: bin/updateGroup
+#    name: update-group-${self:provider.stage}
+#    description: "Updates the metadata for a group"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/{groupId}
+#          method: put
+#
+#  # INVITES
+#  createInvite:
+#    handler: bin/createInvite
+#    name: create-invite-${self:provider.stage}
+#    description: "Generates a link for inviting friends"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/invite
+#          method: post
+#
+#  decodeInvite:
+#    handler: bin/decodeInvite
+#    name: decode-invite-${self:provider.stage}
+#    description: "Returns a group ID from an invite groupCode"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/invite
+#          method: get
+#
+#  # MEMBERS
+#  getGroupMembers:
+#    handler: bin/getGroupMembers
+#    name: get-group-members-${self:provider.stage}
+#    description: "Get the members of a group"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/{groupId}/member
+#          method: get
+#
+#  addMember:
+#    handler: bin/addMember
+#    name: add-member-${self:provider.stage}
+#    description: "Adds a user to a group"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/{groupId}/member/{userId}
+#          method: post
+#
+#  removeMember:
+#    handler: bin/removeMember
+#    name: remove-member-${self:provider.stage}
+#    description: "Removers a user from a group"
+#    memorySize: 128
+#    timeout: 10
+#    events:
+#      - http:
+#          path: group/{groupId}/member/{userId}
+#          method: delete
