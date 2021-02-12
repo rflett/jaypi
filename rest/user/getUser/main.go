@@ -9,10 +9,10 @@ import (
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-
 	// get userId from pathParameters
 	userID := request.PathParameters["userId"]
 
+	// get user
 	u, responseStatus, err := user.Get(userID)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: responseStatus}, nil

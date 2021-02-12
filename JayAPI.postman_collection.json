@@ -80,7 +80,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"nickName\": \"Fletty\"\r\n}\r\n",
+							"raw": "{\r\n  \"nickName\": \"flettel\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -113,6 +113,80 @@
 							"path": [
 								"user",
 								"{{userID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Group",
+			"item": [
+				{
+					"name": "Create Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(201);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response must be valid and have a body\", function () {\r",
+									"     pm.response.to.be.json;\r",
+									"});\r",
+									"\r",
+									"var jsonData = pm.response.json();\r",
+									"\r",
+									"pm.test(\"Check groupID is in response\", function () {\r",
+									"    pm.expect(jsonData).to.have.property('groupID');\r",
+									"});\r",
+									"pm.environment.set(\"groupID\", jsonData.groupID);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"Fletty's group\",\r\n  \"ownerID\": \"{{userID}}\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/group",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/group/{{groupID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"{{groupID}}"
 							]
 						}
 					},

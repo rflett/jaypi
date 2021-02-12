@@ -1,8 +1,10 @@
 package group
 
 import (
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -39,12 +41,61 @@ type Group struct {
 
 // validateCode checks if a code already exists against a group and returns an error if it does
 func validateCode(code string) error {
-	return nil
+	// input
+	input := &dynamodb.ScanInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#C": aws.String("code"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(PrimaryKey),
+			},
+			":sk": {
+				S: aws.String(SortKey),
+			},
+			":c": {
+				S: aws.String(code),
+			},
+		},
+		FilterExpression:     aws.String("begins_with(PK, :pk) and begins_with(SK, :sk) and #C = :c"),
+		ProjectionExpression: aws.String("PK"),
+		TableName:            aws.String(table),
+	}
+
+	// query
+	result, err := db.Scan(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("code", code).Msg("error validating code")
+		return err
+	}
+
+	// code doesn't exist
+	if len(result.Items) == 0 {
+		logger.Log.Info().Str("code", code).Msg("code does not exist")
+		return nil
+	}
+
+	// code exists
+	logger.Log.Info().Str("code", code).Msg("code already exists")
+	return errors.New("code already exists")
 }
 
 // newCode creates a new code for the group
-func (g *Group) newCode() {
-	g.Code = uniuri.NewLen(6)
+func (g *Group) newCode() error {
+	for i := 1; i <= 5; i++ {
+		codeAttempt := uniuri.NewLen(6)
+
+		err := validateCode(codeAttempt)
+		if err == nil {
+			g.Code = codeAttempt
+			return nil
+		}
+	}
+	newCodeError := errors.New("unable to generate new code")
+	logger.Log.Error().Err(newCodeError).Str("groupID", g.GroupID).Msg("Cannot set new code on group")
+	return newCodeError
 }
 
 // Create the group and save it to the database
@@ -54,7 +105,11 @@ func (g *Group) Create() (status int, error error) {
 	g.PK = fmt.Sprintf("%s#%s", PrimaryKey, g.GroupID)
 	g.SK = fmt.Sprintf("%s#%s", SortKey, g.GroupID)
 	g.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-	g.newCode()
+
+	codeErr := g.newCode()
+	if codeErr != nil {
+		return http.StatusInternalServerError, codeErr
+	}
 
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(g)
@@ -77,4 +132,59 @@ func (g *Group) Create() (status int, error error) {
 
 	logger.Log.Info().Str("groupID", g.GroupID).Msg("Successfully added group to table")
 	return http.StatusCreated, nil
+}
+
+// Get the user from the table
+func Get(groupID string) (group Group, status int, error error) {
+	// get query
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, groupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SortKey, groupID)),
+			},
+		},
+		TableName: aws.String(table),
+	}
+
+	// getItem
+	result, err := db.GetItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("groupID", groupID).Msg("error getting group from table")
+			return Group{}, responseStatus, aerr
+		} else {
+			logger.Log.Error().Err(err).Str("groupID", groupID).Msg("error getting group from table")
+			return Group{}, http.StatusInternalServerError, err
+		}
+	}
+
+	if len(result.Item) == 0 {
+		return Group{}, http.StatusNotFound, nil
+	}
+
+	// unmarshal item into struct
+	err = dynamodbattribute.UnmarshalMap(result.Item, &group)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("groupID", groupID).Msg("failed to unmarshal dynamo item to group")
+	}
+
+	return group, http.StatusOK, nil
 }

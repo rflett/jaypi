@@ -105,17 +105,17 @@ functions:
             schema:
               application/json: ${file(schemas/group/create.json)}
 
-#  getGroup:
-#    handler: bin/getGroup
-#    name: get-group-${self:provider.stage}
-#    description: "Retrieves group metadata"
-#    memorySize: 128
-#    timeout: 10
-#    events:
-#      - http:
-#          path: group/{groupId}
-#          method: get
-#
+  getGroup:
+    handler: bin/getGroup
+    name: get-group-${self:provider.stage}
+    description: "Get a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group/{groupId}
+          method: get
+
 #  updateGroup:
 #    handler: bin/updateGroup
 #    name: update-group-${self:provider.stage}
