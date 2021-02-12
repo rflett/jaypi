@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"jjj.rflett.com/jjj-api/types/group"
 	"net/http"
 
@@ -10,35 +9,36 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// BodyRequest is the expected body of the create group request
-type BodyRequest struct {
-	Name  string `json:"name"`
-	Owner string `json:"owner"`
+// requestBody is the expected body of the create groupOld request
+type requestBody struct {
+	Name    string `json:"name"`
+	OwnerID string `json:"ownerID"`
 }
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	// unmarshall request body to BodyRequest struct
-	bodyRequest := BodyRequest{}
-	err := json.Unmarshal([]byte(request.Body), &bodyRequest)
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+	// unmarshall request body to requestBody struct
+	reqBody := requestBody{}
+	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
+	if jsonErr != nil {
+		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
 	// create
 	g := group.Group{
-		ID:    uuid.NewString(),
-		Name:  bodyRequest.Name,
-		Owner: bodyRequest.Owner,
+		OwnerID: reqBody.OwnerID,
+		Name:    reqBody.Name,
 	}
-	createErr, createStatus := g.Add()
+	createStatus, createErr := g.Create()
 	if createErr != nil {
 		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: createStatus}, nil
 	}
 
-	// create and send the response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	// response
+	responseBody, _ := json.Marshal(g)
+	headers := map[string]string{"Content-Type": "application/json"}
+	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}, nil
 }
 
 func main() {

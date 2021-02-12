@@ -90,18 +90,21 @@ functions:
             schema:
               application/json: ${file(schemas/user/update.json)}
 
-#  # GROUPS
-#  createGroup:
-#    handler: bin/createGroup
-#    name: create-group-${self:provider.stage}
-#    description: "Creates a group"
-#    memorySize: 128
-#    timeout: 10
-#    events:
-#      - http:
-#          path: group
-#          method: post
-#
+  # GROUPS
+  createGroup:
+    handler: bin/createGroup
+    name: create-group-${self:provider.stage}
+    description: "Creates a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/group/create.json)}
+
 #  getGroup:
 #    handler: bin/getGroup
 #    name: get-group-${self:provider.stage}
