@@ -144,6 +144,12 @@
 									"    pm.expect(jsonData).to.have.property('groupID');\r",
 									"});\r",
 									"pm.environment.set(\"groupID\", jsonData.groupID);\r",
+									"\r",
+									"\r",
+									"pm.test(\"Check code is in response\", function () {\r",
+									"    pm.expect(jsonData).to.have.property('code');\r",
+									"});\r",
+									"pm.environment.set(\"groupCode\", jsonData.code);\r",
 									""
 								],
 								"type": "text/javascript"
@@ -179,6 +185,74 @@
 					"request": {
 						"method": "GET",
 						"header": [],
+						"url": {
+							"raw": "{{host}}/group/{{groupID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"{{groupID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Join Group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"userID\": \"5cc57aa9-f8c3-407d-8d85-b082a1222c79\",\r\n    \"code\": \"{{groupCode}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/group/join",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"join"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"flettel's group\",\r\n  \"ownerID\": \"{{userID}}\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
 							"raw": "{{host}}/group/{{groupID}}",
 							"host": [

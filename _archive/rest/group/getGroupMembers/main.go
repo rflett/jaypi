@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"jjj.rflett.com/jjj-api/types/group"
+	"jjj.rflett.com/jjj-api/_archive/types/groupOld"
 	"jjj.rflett.com/jjj-api/types/user"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -15,14 +15,14 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// get groupID from pathParameters
 	groupID := request.PathParameters["groupId"]
 
-	// get the group from the database
-	group := group.Group{ID: groupID}
+	// get the groupOld from the database
+	group := groupOld.Group{ID: groupID}
 	err, getStatus := group.Get()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: getStatus}, nil
 	}
 
-	// get the group members from the database
+	// get the groupOld members from the database
 	usersErr, usersStatus, users := user.GetAll(group.Members)
 	if usersErr != nil {
 		return events.APIGatewayProxyResponse{Body: usersErr.Error(), StatusCode: usersStatus}, nil

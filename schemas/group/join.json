@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "JayPI",
+  "type": "object",
+  "properties": {
+    "userID": { "type": "string" },
+    "code":   { "type": "string" }
+  },
+  "required": ["userID", "code"]
+}

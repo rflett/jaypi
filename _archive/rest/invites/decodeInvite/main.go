@@ -83,7 +83,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// get groupCode from request
 	code := request.QueryStringParameters["groupCode"]
 
-	// get the user's group id
+	// get the user's groupOld id
 	responseDto, _ := getUserGroupID(code)
 
 	// create and send the response

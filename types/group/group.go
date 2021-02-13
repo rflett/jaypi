@@ -1,16 +1,15 @@
 package group
 
 import (
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/dchest/uniuri"
 	"github.com/google/uuid"
 	logger "jjj.rflett.com/jjj-api/log"
+	"jjj.rflett.com/jjj-api/types/groupCode"
 	"net/http"
 	"os"
 	"time"
@@ -34,68 +33,18 @@ type Group struct {
 	GroupID   string  `json:"groupID"`
 	OwnerID   string  `json:"ownerID"`
 	Name      string  `json:"name"`
-	Code      string  `json:"code"`
+	Code      string  `json:"code" dynamodbav:"-"`
 	CreatedAt string  `json:"createdAt"`
 	UpdatedAt *string `json:"updatedAt"`
 }
 
-// validateCode checks if a code already exists against a group and returns an error if it does
-func validateCode(code string) error {
-	// input
-	input := &dynamodb.ScanInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#C": aws.String("code"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(PrimaryKey),
-			},
-			":sk": {
-				S: aws.String(SortKey),
-			},
-			":c": {
-				S: aws.String(code),
-			},
-		},
-		FilterExpression:     aws.String("begins_with(PK, :pk) and begins_with(SK, :sk) and #C = :c"),
-		ProjectionExpression: aws.String("PK"),
-		TableName:            aws.String(table),
-	}
-
-	// query
-	result, err := db.Scan(input)
-
-	// handle errors
-	if err != nil {
-		logger.Log.Error().Err(err).Str("code", code).Msg("error validating code")
-		return err
-	}
-
-	// code doesn't exist
-	if len(result.Items) == 0 {
-		logger.Log.Info().Str("code", code).Msg("code does not exist")
-		return nil
-	}
-
-	// code exists
-	logger.Log.Info().Str("code", code).Msg("code already exists")
-	return errors.New("code already exists")
-}
-
-// newCode creates a new code for the group
-func (g *Group) newCode() error {
-	for i := 1; i <= 5; i++ {
-		codeAttempt := uniuri.NewLen(6)
-
-		err := validateCode(codeAttempt)
-		if err == nil {
-			g.Code = codeAttempt
-			return nil
-		}
-	}
-	newCodeError := errors.New("unable to generate new code")
-	logger.Log.Error().Err(newCodeError).Str("groupID", g.GroupID).Msg("Cannot set new code on group")
-	return newCodeError
+// groupMember is a member of a group
+type groupMember struct {
+	PK       string `json:"-" dynamodbav:"PK"`
+	SK       string `json:"-" dynamodbav:"SK"`
+	UserID   string `json:"userID"`
+	GroupID  string `json:"groupID"`
+	JoinedAt string `json:"joinedAt"`
 }
 
 // Create the group and save it to the database
@@ -105,11 +54,6 @@ func (g *Group) Create() (status int, error error) {
 	g.PK = fmt.Sprintf("%s#%s", PrimaryKey, g.GroupID)
 	g.SK = fmt.Sprintf("%s#%s", SortKey, g.GroupID)
 	g.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-
-	codeErr := g.newCode()
-	if codeErr != nil {
-		return http.StatusInternalServerError, codeErr
-	}
 
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(g)
@@ -128,6 +72,20 @@ func (g *Group) Create() (status int, error error) {
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("Error adding group to table")
 		return http.StatusInternalServerError, err
+	}
+
+	// create code
+	code, codeErr := groupCode.New(g.GroupID)
+	if codeErr != nil {
+		return http.StatusInternalServerError, codeErr
+	}
+	g.Code = code.Code
+
+	// add the owner as a member
+	_, joinStatus, joinErr := Join(g.OwnerID, g.Code)
+	if joinErr != nil {
+		logger.Log.Error().Err(joinErr).Str("groupID", g.GroupID).Msg("Unable to join owner to group")
+		return joinStatus, joinErr
 	}
 
 	logger.Log.Info().Str("groupID", g.GroupID).Msg("Successfully added group to table")
@@ -208,7 +166,7 @@ func (g *Group) Update() (status int, error error) {
 	return http.StatusNoContent, nil
 }
 
-// Get the user from the table
+// Get the group from the table
 func Get(groupID string) (group Group, status int, error error) {
 	// get query
 	input := &dynamodb.GetItemInput{
@@ -260,5 +218,54 @@ func Get(groupID string) (group Group, status int, error error) {
 		logger.Log.Error().Err(err).Str("groupID", groupID).Msg("failed to unmarshal dynamo item to group")
 	}
 
+	// get the group code
+	code, codeErr := groupCode.Get(groupID)
+	if codeErr != nil {
+		return group, http.StatusOK, nil
+	}
+	group.Code = code
 	return group, http.StatusOK, nil
+}
+
+// Join a user to a group
+func Join(userID string, code string) (group Group, status int, error error) {
+	groupID, groupIDErr := groupCode.GetGroupFromCode(code)
+	if groupIDErr != nil {
+		return Group{}, http.StatusBadRequest, groupIDErr
+	}
+
+	gm := groupMember{
+		PK:       fmt.Sprintf("%s#%s", PrimaryKey, groupID),
+		SK:       fmt.Sprintf("%s#%s", "USER", userID),
+		UserID:   userID,
+		GroupID:  groupID,
+		JoinedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	// create item
+	av, _ := dynamodbattribute.MarshalMap(gm)
+
+	// create input
+	input := &dynamodb.PutItemInput{
+		TableName:    aws.String(table),
+		Item:         av,
+		ReturnValues: aws.String("NONE"),
+	}
+
+	// add to table
+	_, err := db.PutItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", userID).Msg("Error adding user to group")
+		return Group{}, http.StatusInternalServerError, err
+	}
+
+	// return the group
+	logger.Log.Info().Str("groupID", groupID).Str("userID", userID).Msg("Successfully added user to group")
+	g, _, getGroupErr := Get(groupID)
+	if getGroupErr != nil {
+		return Group{}, http.StatusInternalServerError, err
+	}
+	return g, http.StatusOK, nil
 }

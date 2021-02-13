@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"jjj.rflett.com/jjj-api/types/group"
+	"jjj.rflett.com/jjj-api/_archive/types/groupOld"
 )
 
 // Handler is our handle on life
@@ -13,8 +13,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	userID := request.PathParameters["userId"]
 	groupID := request.PathParameters["groupId"]
 
-	// add user to group
-	g := group.Group{ID: groupID}
+	// add user to groupOld
+	g := groupOld.Group{ID: groupID}
 	err, addStatus := g.AddMember(userID)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: addStatus}, nil

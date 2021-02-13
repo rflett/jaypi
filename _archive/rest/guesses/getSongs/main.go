@@ -19,12 +19,12 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// these might go in redis or something as they won't change and will be queried heavliy
 	songs := []Song{
-		Song{
+		{
 			ID:     "1",
 			Artist: "Dream Theater",
 			Title:  "Raise The Knife",
 		},
-		Song{
+		{
 			ID:     "2",
 			Artist: "Opeth",
 			Title:  "When",

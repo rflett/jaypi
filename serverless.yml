@@ -130,6 +130,20 @@ functions:
             schema:
               application/json: ${file(schemas/group/update.json)}
 
+  joinGroup:
+    handler: bin/joinGroup
+    name: join-group-${self:provider.stage}
+    description: "Join a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group/join
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/group/join.json)}
+
 #  # INVITES
 #  createInvite:
 #    handler: bin/createInvite

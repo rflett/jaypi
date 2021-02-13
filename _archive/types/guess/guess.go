@@ -5,4 +5,3 @@ type Guess struct {
 	Artist string `json:"artist"`
 	Song   string `json:"song"`
 }
-
