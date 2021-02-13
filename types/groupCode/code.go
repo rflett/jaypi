@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	PrimaryKey = "GROUP"
-	SortKey    = "#CODE"
+	PrimaryKey     = "GROUP"
+	SortKey        = "#CODE"
 	SecondaryIndex = "GSI1"
 )
 
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
-	table    = os.Getenv("JAYPI_TABLE")
+	table         = os.Getenv("JAYPI_TABLE")
 )
 
 type GroupCode struct {
@@ -43,7 +43,7 @@ func validateCode(code string) error {
 				S: aws.String(fmt.Sprintf("%s#", PrimaryKey)),
 			},
 		},
-		IndexName: aws.String(SecondaryIndex),
+		IndexName:              aws.String(SecondaryIndex),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("code"),
 		TableName:              aws.String(table),
@@ -128,7 +128,7 @@ func GetGroupFromCode(code string) (string, error) {
 				S: aws.String(fmt.Sprintf("%s#", PrimaryKey)),
 			},
 		},
-		IndexName: aws.String(SecondaryIndex),
+		IndexName:              aws.String(SecondaryIndex),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("groupID"),
 		TableName:              aws.String(table),
