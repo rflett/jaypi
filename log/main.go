@@ -11,7 +11,6 @@ var (
 	Log         = zerolog.Logger{}
 )
 
-
 func init() {
 	// sets up the log
 	if v, ok := os.LookupEnv("STAGE"); ok {
