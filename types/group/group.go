@@ -134,6 +134,80 @@ func (g *Group) Create() (status int, error error) {
 	return http.StatusCreated, nil
 }
 
+// Update the group's attributes
+func (g *Group) Update() (status int, error error) {
+	// set fields
+	updatedAt := time.Now().UTC().Format(time.RFC3339)
+	g.UpdatedAt = &updatedAt
+
+	pk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, g.GroupID)),
+	}
+	sk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", SortKey, g.GroupID)),
+	}
+
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#N":  aws.String("name"),
+			"#UA": aws.String("updatedAt"),
+			"#O":  aws.String("ownerID"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": &pk,
+			":sk": &sk,
+			":ua": {
+				S: aws.String(*g.UpdatedAt),
+			},
+			":n": {
+				S: aws.String(g.Name),
+			},
+			":o": {
+				S: aws.String(g.OwnerID),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": &pk,
+			"SK": &sk,
+		},
+		ReturnValues:        aws.String("NONE"),
+		TableName:           aws.String(table),
+		ConditionExpression: aws.String("PK = :pk and SK = :sk and #O = :o"),
+		UpdateExpression:    aws.String("SET #N = :n, #UA = :ua"),
+	}
+
+	_, err := db.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeConditionalCheckFailedException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Msg("error updating group")
+			return responseStatus, aerr
+		} else {
+			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group")
+			return http.StatusInternalServerError, err
+		}
+	}
+
+	return http.StatusNoContent, nil
+}
+
 // Get the user from the table
 func Get(groupID string) (group Group, status int, error error) {
 	// get query

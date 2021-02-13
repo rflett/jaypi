@@ -116,17 +116,20 @@ functions:
           path: group/{groupId}
           method: get
 
-#  updateGroup:
-#    handler: bin/updateGroup
-#    name: update-group-${self:provider.stage}
-#    description: "Updates the metadata for a group"
-#    memorySize: 128
-#    timeout: 10
-#    events:
-#      - http:
-#          path: group/{groupId}
-#          method: put
-#
+  updateGroup:
+    handler: bin/updateGroup
+    name: update-group-${self:provider.stage}
+    description: "Update a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group/{groupId}
+          method: put
+          request:
+            schema:
+              application/json: ${file(schemas/group/update.json)}
+
 #  # INVITES
 #  createInvite:
 #    handler: bin/createInvite
