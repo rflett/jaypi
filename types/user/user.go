@@ -188,6 +188,38 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 	return http.StatusNoContent, nil
 }
 
+// RemoveVote removes a song as a users vote
+func (u *User) RemoveVote(songID *string) (status int, error error) {
+	// set fields
+	pk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+	}
+	sk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", "SONG", *songID)),
+	}
+
+	// delete query
+	input := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": &pk,
+			"SK": &sk,
+		},
+		TableName: aws.String(table),
+	}
+
+	// delete from table
+	_, err := db.DeleteItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("songID", *songID).Str("userID", u.UserID).Msg("Error removing song from user")
+		return http.StatusInternalServerError, err
+	}
+
+	logger.Log.Info().Str("songID", *songID).Str("userID", u.UserID).Msg("Removed song vote from user")
+	return http.StatusNoContent, nil
+}
+
 // Get the user from the table
 func Get(userID string) (user User, status int, error error) {
 	// get query

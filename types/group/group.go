@@ -340,5 +340,6 @@ func Leave(userID string, groupID string) (status int, error error) {
 		return http.StatusInternalServerError, err
 	}
 
+	logger.Log.Info().Str("groupID", groupID).Str("userID", userID).Msg("User left group")
 	return http.StatusNoContent, nil
 }

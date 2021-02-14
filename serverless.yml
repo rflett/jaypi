@@ -169,6 +169,17 @@ functions:
             schema:
               application/json: ${file(schemas/votes/create.json)}
 
+  deleteVote:
+    handler: bin/deleteVote
+    name: delete-vote-${self:provider.stage}
+    description: "Delete a vote"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: user/{userId}/vote/{songId}
+          method: delete
+
 #  # INVITES
 #  createInvite:
 #    handler: bin/createInvite
