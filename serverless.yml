@@ -153,10 +153,20 @@ functions:
     events:
       - http:
           path: group/leave
+  createVote:
+    handler: bin/createVote
+    name: create-vote-${self:provider.stage}
+    description: "Create a vote"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: user/{userId}/vote
           method: post
           request:
             schema:
               application/json: ${file(schemas/group/leave.json)}
+              application/json: ${file(schemas/votes/create.json)}
 
 #  # INVITES
 #  createInvite:

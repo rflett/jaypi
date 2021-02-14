@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/google/uuid"
 	logger "jjj.rflett.com/jjj-api/log"
+	"jjj.rflett.com/jjj-api/types/song"
 	"net/http"
 	"os"
 	"time"
@@ -37,6 +38,14 @@ type User struct {
 	Points    int     `json:"points"`
 	CreatedAt string  `json:"createdAt"`
 	UpdatedAt *string `json:"updatedAt"`
+}
+
+// songVote is a votes in a users top 10
+type songVote struct {
+	PK       string `json:"-" dynamodbav:"PK"`
+	SK       string `json:"-" dynamodbav:"SK"`
+	SongID   string `json:"songID"`
+	Position int    `json:"position"`
 }
 
 // Create the user and save them to the database
@@ -137,6 +146,45 @@ func (u *User) Update() (status int, error error) {
 		}
 	}
 
+	return http.StatusNoContent, nil
+}
+
+// AddVote adds a song as a votes for the user
+func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
+	// check if song exists and add it if it doesn't
+	if exists := s.Exists(); exists == nil {
+		createSongErr := s.Create()
+		if createSongErr != nil {
+			return http.StatusInternalServerError, createSongErr
+		}
+	}
+
+	// set fields
+	sv := songVote{
+		PK:       fmt.Sprintf("%s#%s", PrimaryKey, u.UserID),
+		SK:       fmt.Sprintf("%s#%s", "SONG", s.SongID),
+		SongID:   s.SongID,
+		Position: position,
+	}
+
+	// create item
+	av, _ := dynamodbattribute.MarshalMap(sv)
+	input := &dynamodb.PutItemInput{
+		Item:         av,
+		ReturnValues: aws.String("NONE"),
+		TableName:    aws.String(table),
+	}
+
+	// add to table
+	_, err := db.PutItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Str("songID", s.SongID).Msg("Error adding votes")
+		return http.StatusInternalServerError, err
+	}
+
+	logger.Log.Info().Str("userID", u.UserID).Str("songID", s.SongID).Msg("Added user votes")
 	return http.StatusNoContent, nil
 }
 

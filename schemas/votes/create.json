@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "JayPI",
+  "type": "object",
+  "properties": {
+    "songID":   { "type": "string" },
+    "name":     { "type": "string" },
+    "artist":   { "type": "string" },
+    "position": { "type": "integer" }
+  },
+  "required": ["songID", "name", "artist", "position"]
+}

@@ -9,6 +9,73 @@
 			"name": "User",
 			"item": [
 				{
+					"name": "Votes",
+					"item": [
+						{
+							"name": "Create Vote",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"response is ok\", function () {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"songID\": \"5gAYA4sD2wooB2TVmyqJ6s\",\r\n  \"name\": \"The Strain\",\r\n  \"artist\": \"Haken\",\r\n  \"position\": 1\r\n}\r\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/user/{{userID}}/vote",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"user",
+										"{{userID}}",
+										"vote"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
 					"name": "Create User",
 					"event": [
 						{
@@ -269,29 +336,161 @@
 				{
 					"name": "Leave Group",
 					"request": {
-						"method": "POST",
+						"method": "DELETE",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"userID\": \"1c4139ce-f164-4fc4-8348-87f1e93aff72\",\r\n    \"groupID\": \"887b74ee-79a3-4fc3-acf6-570a1a08ed4c\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{host}}/group/leave",
+							"raw": "{{host}}/group/{{groupID}}/user/{{userID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"group",
-								"leave"
+								"{{groupID}}",
+								"user",
+								"{{userID}}"
 							]
 						}
 					},
 					"response": []
+				}
+			]
+		},
+		{
+			"name": "Spotify",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// pm.test(\"response is ok\", function () {\r",
+									"//     pm.response.to.have.status(201);\r",
+									"// });\r",
+									"\r",
+									"pm.test(\"response must be valid and have a body\", function () {\r",
+									"     pm.response.to.be.json;\r",
+									"});\r",
+									"\r",
+									"var jsonData = pm.response.json();\r",
+									"\r",
+									"pm.test(\"Check access_token is in response\", function () {\r",
+									"    pm.expect(jsonData).to.have.property('access_token');\r",
+									"});\r",
+									"pm.environment.set(\"spotifyAccessToken\", jsonData.access_token);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{spotifyClientAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "grant_type",
+									"value": "client_credentials",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://accounts.spotify.com/api/token",
+							"protocol": "https",
+							"host": [
+								"accounts",
+								"spotify",
+								"com"
+							],
+							"path": [
+								"api",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://api.spotify.com/v1/search?q=The+Strain+Haken&type=track&market=AU&limit=3",
+							"protocol": "https",
+							"host": [
+								"api",
+								"spotify",
+								"com"
+							],
+							"path": [
+								"v1",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "The+Strain+Haken"
+								},
+								{
+									"key": "type",
+									"value": "track"
+								},
+								{
+									"key": "market",
+									"value": "AU"
+								},
+								{
+									"key": "limit",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{spotifyAccessToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
 				}
 			]
 		}
