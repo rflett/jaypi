@@ -52,6 +52,40 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Remove Vote",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"response is ok\", function () {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/user/{{userID}}/vote/{{songID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"user",
+										"{{userID}}",
+										"vote",
+										"{{songID}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"event": [
