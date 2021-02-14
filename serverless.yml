@@ -152,7 +152,9 @@ functions:
     timeout: 10
     events:
       - http:
-          path: group/leave
+          path: group/{groupId}/user/{userId}
+          method: delete
+
   createVote:
     handler: bin/createVote
     name: create-vote-${self:provider.stage}
@@ -165,7 +167,6 @@ functions:
           method: post
           request:
             schema:
-              application/json: ${file(schemas/group/leave.json)}
               application/json: ${file(schemas/votes/create.json)}
 
 #  # INVITES
