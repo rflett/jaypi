@@ -11,8 +11,8 @@ import (
 
 // requestBody is the expected body of the create groupOld request
 type requestBody struct {
-	UserID string `json:"userID"`
-	Code   string `json:"code"`
+	UserID  string `json:"userID"`
+	GroupID string `json:"groupID"`
 }
 
 // Handler is our handle on life
@@ -25,16 +25,14 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
-	// join
-	g, joinStatus, joinErr := group.Join(reqBody.UserID, reqBody.Code)
-	if joinErr != nil {
-		return events.APIGatewayProxyResponse{Body: joinErr.Error(), StatusCode: joinStatus}, nil
+	// leave
+	leaveStatus, leaveErr := group.Leave(reqBody.UserID, reqBody.GroupID)
+	if leaveErr != nil {
+		return events.APIGatewayProxyResponse{Body: leaveErr.Error(), StatusCode: leaveStatus}, nil
 	}
 
 	// response
-	responseBody, _ := json.Marshal(g)
-	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusOK, Headers: headers}, nil
+	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
 }
 
 func main() {

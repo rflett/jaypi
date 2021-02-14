@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	PrimaryKey = "GROUP"
-	SortKey    = "#PROFILE"
+	PrimaryKey     = "GROUP"
+	SortKey        = "#PROFILE"
+	SecondaryIndex = "GSI1"
 )
 
 var (
@@ -45,6 +46,41 @@ type groupMember struct {
 	UserID   string `json:"userID"`
 	GroupID  string `json:"groupID"`
 	JoinedAt string `json:"joinedAt"`
+}
+
+// leaveAllGroups removes a member from all of their groups
+func leaveAllGroups(userID string) error {
+	// find any other groups to leave
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", "USER", userID)),
+			},
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", PrimaryKey)),
+			},
+		},
+		IndexName:              aws.String(SecondaryIndex),
+		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		ProjectionExpression:   aws.String("groupID"),
+		TableName:              aws.String(table),
+	}
+	groupMemberships, queryErr := db.Query(input)
+	if queryErr != nil {
+		logger.Log.Error().Err(queryErr).Str("userId", userID).Msg("error getting users groups")
+		return queryErr
+	}
+
+	// for each group membership that the user has, leave those groups
+	for _, membership := range groupMemberships.Items {
+		gm := groupMember{}
+		unMarshErr := dynamodbattribute.UnmarshalMap(membership, &gm)
+		if unMarshErr != nil {
+			logger.Log.Error().Err(unMarshErr).Str("userID", userID).Msg("error unmarshalling group member to groupMember")
+		}
+		_, _ = Leave(userID, gm.GroupID)
+	}
+	return nil
 }
 
 // Create the group and save it to the database
@@ -242,6 +278,12 @@ func Join(userID string, code string) (group Group, status int, error error) {
 		JoinedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 
+	// leave any other groups (should only ever be one other group membership)
+	leaveErr := leaveAllGroups(userID)
+	if leaveErr != nil {
+		return Group{}, http.StatusInternalServerError, leaveErr
+	}
+
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(gm)
 
@@ -268,4 +310,35 @@ func Join(userID string, code string) (group Group, status int, error error) {
 		return Group{}, http.StatusInternalServerError, err
 	}
 	return g, http.StatusOK, nil
+}
+
+// Leave a group
+func Leave(userID string, groupID string) (status int, error error) {
+	// set fields
+	pk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, groupID)),
+	}
+	sk := dynamodb.AttributeValue{
+		S: aws.String(fmt.Sprintf("%s#%s", "USER", userID)),
+	}
+
+	// delete query
+	input := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": &pk,
+			"SK": &sk,
+		},
+		TableName: aws.String(table),
+	}
+
+	// delete from table
+	_, err := db.DeleteItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", userID).Msg("Error removing user from group")
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusNoContent, nil
 }

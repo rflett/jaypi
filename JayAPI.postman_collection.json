@@ -161,7 +161,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"Fletty's group\",\r\n  \"ownerID\": \"{{userID}}\"\r\n}\r\n",
+							"raw": "{\r\n  \"name\": \"fleet's gang\",\r\n  \"ownerID\": \"{{userID}}\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -193,33 +193,6 @@
 							"path": [
 								"group",
 								"{{groupID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Join Group",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"userID\": \"5cc57aa9-f8c3-407d-8d85-b082a1222c79\",\r\n    \"code\": \"{{groupCode}}\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/group/join",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"group",
-								"join"
 							]
 						}
 					},
@@ -261,6 +234,60 @@
 							"path": [
 								"group",
 								"{{groupID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Join Group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"userID\": \"{{userID}}\",\r\n    \"code\": \"{{groupCode}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/group/join",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"join"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Leave Group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"userID\": \"1c4139ce-f164-4fc4-8348-87f1e93aff72\",\r\n    \"groupID\": \"887b74ee-79a3-4fc3-acf6-570a1a08ed4c\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/group/leave",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"leave"
 							]
 						}
 					},

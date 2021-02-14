@@ -1,0 +1,6 @@
+{
+  "resource": "/",
+  "path": "/group/leave",
+  "httpMethod": "POST",
+  "body": "{\"userID\": \"5d784f0b-695e-4c5a-86c8-ffcd3ca9aacd\", \"groupID\": \"413807f3-0d27-4f11-a2fb-d4d0b97b2212\"}"
+}

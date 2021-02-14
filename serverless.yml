@@ -144,6 +144,20 @@ functions:
             schema:
               application/json: ${file(schemas/group/join.json)}
 
+  leaveGroup:
+    handler: bin/leaveGroup
+    name: leave-group-${self:provider.stage}
+    description: "Leave a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group/leave
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/group/leave.json)}
+
 #  # INVITES
 #  createInvite:
 #    handler: bin/createInvite
