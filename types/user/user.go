@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -46,6 +47,31 @@ type songVote struct {
 	SK       string `json:"-" dynamodbav:"SK"`
 	SongID   string `json:"songID"`
 	Position int    `json:"position"`
+}
+
+// voteCount returns the number of votes a user already has
+func (u *User) voteCount() (count int, error error) {
+	// input
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+			},
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#", "SONG")),
+			},
+		},
+		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
+		ProjectionExpression:   aws.String("userID"),
+		TableName:              aws.String(table),
+	}
+
+	queryResult, queryErr := db.Query(input)
+	if queryErr != nil {
+		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting user song count")
+		return 0, queryErr
+	}
+	return int(*queryResult.Count), nil
 }
 
 // Create the user and save them to the database
@@ -157,6 +183,17 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 		if createSongErr != nil {
 			return http.StatusInternalServerError, createSongErr
 		}
+	}
+
+	// don't allow more than 10 votes
+	vc, vcErr := u.voteCount()
+	if vcErr != nil {
+		return http.StatusInternalServerError, vcErr
+	}
+	if vc >= 10 {
+		tooManyCountsErr := errors.New("user already has 10 song votes")
+		logger.Log.Error().Err(tooManyCountsErr).Str("userID", u.UserID).Msg("User has maxxed out their votes")
+		return http.StatusBadRequest, tooManyCountsErr
 	}
 
 	// set fields
