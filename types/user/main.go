@@ -63,7 +63,7 @@ func (u *User) voteCount() (count int, error error) {
 		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
 		ProjectionExpression:   aws.String("userID"),
-		TableName:              aws.String(table),
+		TableName:              &table,
 	}
 
 	queryResult, queryErr := db.Query(input)
@@ -87,7 +87,7 @@ func (u *User) Create() (status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    aws.String(table),
+		TableName:    &table,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
@@ -139,7 +139,7 @@ func (u *User) Update() (status int, error error) {
 			"SK": &sk,
 		},
 		ReturnValues:        aws.String("NONE"),
-		TableName:           aws.String(table),
+		TableName:           &table,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #NN = :nn, #UA = :ua"),
 	}
@@ -214,7 +214,7 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 	input := &dynamodb.PutItemInput{
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
-		TableName:    aws.String(table),
+		TableName:    &table,
 	}
 
 	// add to table
@@ -246,7 +246,7 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 			"PK": &pk,
 			"SK": &sk,
 		},
-		TableName: aws.String(table),
+		TableName: &table,
 	}
 
 	// delete from table
@@ -274,7 +274,7 @@ func Get(userID string) (user User, status int, error error) {
 				S: aws.String(fmt.Sprintf("%s#%s", SortKey, userID)),
 			},
 		},
-		TableName: aws.String(table),
+		TableName: &table,
 	}
 
 	// getItem

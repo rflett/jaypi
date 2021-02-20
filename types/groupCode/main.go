@@ -46,7 +46,7 @@ func validateCode(code string) error {
 		IndexName:              aws.String(SecondaryIndex),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("code"),
-		TableName:              aws.String(table),
+		TableName:              &table,
 	}
 
 	// query
@@ -99,7 +99,7 @@ func New(groupID string) (GroupCode, error) {
 	// add the code to the table
 	av, _ := dynamodbattribute.MarshalMap(groupCode)
 	input := &dynamodb.PutItemInput{
-		TableName:    aws.String(table),
+		TableName:    &table,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
@@ -131,7 +131,7 @@ func GetGroupFromCode(code string) (string, error) {
 		IndexName:              aws.String(SecondaryIndex),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("groupID"),
-		TableName:              aws.String(table),
+		TableName:              &table,
 	}
 
 	// query
@@ -175,7 +175,7 @@ func Get(groupId string) (string, error) {
 		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
 		ProjectionExpression:   aws.String("code"),
-		TableName:              aws.String(table),
+		TableName:              &table,
 	}
 
 	// query

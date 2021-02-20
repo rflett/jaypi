@@ -63,7 +63,7 @@ func leaveAllGroups(userID string) error {
 		IndexName:              aws.String(SecondaryIndex),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("groupID"),
-		TableName:              aws.String(table),
+		TableName:              &table,
 	}
 	groupMemberships, queryErr := db.Query(input)
 	if queryErr != nil {
@@ -96,7 +96,7 @@ func (g *Group) Create() (status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    aws.String(table),
+		TableName:    &table,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
@@ -166,7 +166,7 @@ func (g *Group) Update() (status int, error error) {
 			"SK": &sk,
 		},
 		ReturnValues:        aws.String("NONE"),
-		TableName:           aws.String(table),
+		TableName:           &table,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk and #O = :o"),
 		UpdateExpression:    aws.String("SET #N = :n, #UA = :ua"),
 	}
@@ -214,7 +214,7 @@ func Get(groupID string) (group Group, status int, error error) {
 				S: aws.String(fmt.Sprintf("%s#%s", SortKey, groupID)),
 			},
 		},
-		TableName: aws.String(table),
+		TableName: &table,
 	}
 
 	// getItem
@@ -289,7 +289,7 @@ func Join(userID string, code string) (group Group, status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    aws.String(table),
+		TableName:    &table,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
@@ -328,7 +328,7 @@ func Leave(userID string, groupID string) (status int, error error) {
 			"PK": &pk,
 			"SK": &sk,
 		},
-		TableName: aws.String(table),
+		TableName: &table,
 	}
 
 	// delete from table

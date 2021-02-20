@@ -10,6 +10,7 @@ import (
 	logger "jjj.rflett.com/jjj-api/log"
 	"jjj.rflett.com/jjj-api/types/jjj"
 	"jjj.rflett.com/jjj-api/types/playCount"
+	"os"
 	"regexp"
 	"time"
 )
@@ -22,7 +23,7 @@ const (
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
-	table         = "jaypi"
+	table         = os.Getenv("JAYPI_TABLE")
 )
 
 // Song is a Song that a user can votes for
@@ -61,7 +62,7 @@ func (s *Song) Create() error {
 	input := &dynamodb.PutItemInput{
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
-		TableName:    aws.String(table),
+		TableName:    &table,
 	}
 
 	// add to table
@@ -91,7 +92,7 @@ func (s *Song) Exists() (bool, error) {
 		},
 		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
 		ProjectionExpression:   aws.String("songID"),
-		TableName:              aws.String(table),
+		TableName:              &table,
 	}
 
 	// query
@@ -159,7 +160,7 @@ func (s *Song) Played() error {
 			"SK": &sk,
 		},
 		ReturnValues:        aws.String("NONE"),
-		TableName:           aws.String(table),
+		TableName:           &table,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #PA = :pa, #PP = :pp"),
 	}
