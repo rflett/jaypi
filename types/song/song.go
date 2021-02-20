@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	logger "jjj.rflett.com/jjj-api/log"
 	"jjj.rflett.com/jjj-api/types/jjj"
+	"jjj.rflett.com/jjj-api/types/playCount"
 	"regexp"
 	"time"
 )
@@ -131,16 +132,26 @@ func (s *Song) Played() error {
 		S: aws.String(fmt.Sprintf("%s#%s", SortKey, s.SongID)),
 	}
 
+	// get current played count
+	currentPlayCount, playCountErr := playCount.GetCurrentPlayCount()
+	if playCountErr != nil {
+		return playCountErr
+	}
+
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#PA": aws.String("playedAt"),
+			"#PP": aws.String("playedPosition"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": &pk,
 			":sk": &sk,
 			":pa": {
 				S: aws.String(*s.PlayedAt),
+			},
+			":pp": {
+				N: currentPlayCount,
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
@@ -150,7 +161,7 @@ func (s *Song) Played() error {
 		ReturnValues:        aws.String("NONE"),
 		TableName:           aws.String(table),
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
-		UpdateExpression:    aws.String("SET #PA = :pa"),
+		UpdateExpression:    aws.String("SET #PA = :pa, #PP = :pp"),
 	}
 
 	_, err := db.UpdateItem(input)
@@ -158,7 +169,9 @@ func (s *Song) Played() error {
 	// handle errors
 	if err != nil {
 		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Error updating song")
+		return err
 	}
 
-	return err
+	playCount.IncrementPlayCount()
+	return nil
 }
