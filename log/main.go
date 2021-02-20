@@ -19,7 +19,7 @@ func init() {
 
 	// in dev we use the pretty console output, other envs use JSON
 	if os.Getenv("STAGE") == "dev" || os.Getenv("STAGE") == "" {
-		output := zerolog.ConsoleWriter{Out: os.Stdout}
+		output := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: true}
 		Log = zerolog.New(output).Hook(SeverityHook{}).With().Timestamp().Logger()
 		dl.Level(zerolog.DebugLevel)
 	} else {
