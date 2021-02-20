@@ -27,8 +27,8 @@ functions:
     timeout: 20
     reservedConcurrency: 1
     environment:
-      SPOTIFY_CLIENT_ID: ${file(env.yml):SpotifyClientID}
-      SPOTIFY_SECRET_ID: ${file(env.yml):SpotifySecretID}
+      SPOTIFY_CLIENT_ID: ${file(env.yml):SpotifyClientID, ${opt:SpotifyClientID}}
+      SPOTIFY_SECRET_ID: ${file(env.yml):SpotifySecretID, ${opt:SpotifySecretID}}
       REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/chune-refresh-${self:provider.stage}
       COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/bean-counter-${self:provider.stage}
     events:
