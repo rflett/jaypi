@@ -300,6 +300,25 @@
 					"response": []
 				},
 				{
+					"name": "Get Group QR",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/group/{{groupID}}/qr",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"{{groupID}}",
+								"qr"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update Group",
 					"event": [
 						{

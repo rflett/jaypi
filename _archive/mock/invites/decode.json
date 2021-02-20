@@ -1,8 +1,0 @@
-{
-    "resource": "/",
-    "path": "/group/invite",
-    "httpMethod": "GET",
-    "queryStringParameters": {
-        "code": "a2972d18-2862-4eff-9af5-49a177455cb5"
-    }
-}

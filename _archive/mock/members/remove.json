@@ -1,9 +1,0 @@
-{
-  "resource": "/",
-  "path": "/group/member",
-  "httpMethod": "DELETE",
-  "pathParameters": {
-    "groupId": "fd4f08ef-99da-4832-ad0c-0e9d2de6af48",
-    "userId": "3f623014-0089-4089-ae14-66da486603ec"
-  }
-}
