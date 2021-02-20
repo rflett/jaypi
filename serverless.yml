@@ -142,6 +142,17 @@ functions:
           path: group/{groupId}/user/{userId}
           method: delete
 
+  getGroupQR:
+    handler: bin/getGroupQR
+    name: get-group-qr-${self:provider.stage}
+    description: "Get the QR invite for a group"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: group/{groupId}/qr
+          method: get
+
  # VOTES
   createVote:
     handler: bin/createVote

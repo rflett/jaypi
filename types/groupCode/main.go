@@ -1,6 +1,7 @@
 package groupCode
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/dchest/uniuri"
+	"github.com/skip2/go-qrcode"
 	logger "jjj.rflett.com/jjj-api/log"
 	"os"
 )
@@ -159,6 +161,22 @@ func GetGroupFromCode(code string) (string, error) {
 		return "", err
 	}
 	return gc.GroupID, nil
+}
+
+// QR returns the group code as a QR
+func QR(groupID string) (string, error) {
+	code, getCodeErr := Get(groupID)
+	if getCodeErr != nil {
+		return "", getCodeErr
+	}
+
+	qrCode, qrErr := qrcode.Encode(code, qrcode.Low, 256)
+	if qrErr != nil {
+		logger.Log.Error().Err(qrErr).Str("groupID", groupID).Msg("Unable to generate QR code for group code")
+		return "", qrErr
+	}
+
+	return base64.StdEncoding.EncodeToString(qrCode), nil
 }
 
 // Get the group code
