@@ -66,7 +66,11 @@ jobs:
 
       - name: Install serverless
         run: npm install -g serverless
-      
+
+      - name: Set file permissions
+        working-directory: bin
+        run: chmod 755 $(find . -type f)
+
       - name: Deploy
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
