@@ -463,7 +463,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "https://api.spotify.com/v1/search?q=The+Strain+Haken&type=track&market=AU&limit=3",
+							"raw": "https://api.spotify.com/v1/search?q=Something+About+Being+Sixteen+Teenage+Joans&type=track&limit=3",
 							"protocol": "https",
 							"host": [
 								"api",
@@ -477,7 +477,7 @@
 							"query": [
 								{
 									"key": "q",
-									"value": "The+Strain+Haken"
+									"value": "Something+About+Being+Sixteen+Teenage+Joans"
 								},
 								{
 									"key": "type",
@@ -485,7 +485,8 @@
 								},
 								{
 									"key": "market",
-									"value": "AU"
+									"value": "AU",
+									"disabled": true
 								},
 								{
 									"key": "limit",
@@ -525,6 +526,42 @@
 							""
 						]
 					}
+				}
+			]
+		},
+		{
+			"name": "JJJ",
+			"item": [
+				{
+					"name": "Now Playing",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://music.abcradio.net.au/api/v1/plays/triplej/now.json?tz=Australia/Sydney",
+							"protocol": "https",
+							"host": [
+								"music",
+								"abcradio",
+								"net",
+								"au"
+							],
+							"path": [
+								"api",
+								"v1",
+								"plays",
+								"triplej",
+								"now.json"
+							],
+							"query": [
+								{
+									"key": "tz",
+									"value": "Australia/Sydney"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
