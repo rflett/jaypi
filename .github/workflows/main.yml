@@ -1,0 +1,59 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GOOS: linux
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Get Dependencies
+        run: go get
+
+      - name: Build
+        run: |
+          go build -ldflags="-s -w" -o bin/createUser     rest/user/createUser/main.go
+          go build -ldflags="-s -w" -o bin/getUser        rest/user/getUser/main.go
+          go build -ldflags="-s -w" -o bin/updateUser     rest/user/updateUser/main.go
+          go build -ldflags="-s -w" -o bin/createGroup    rest/group/createGroup/main.go
+          go build -ldflags="-s -w" -o bin/getGroup       rest/group/getGroup/main.go
+          go build -ldflags="-s -w" -o bin/updateGroup    rest/group/updateGroup/main.go
+          go build -ldflags="-s -w" -o bin/joinGroup      rest/group/joinGroup/main.go
+          go build -ldflags="-s -w" -o bin/leaveGroup     rest/group/leaveGroup/main.go
+          go build -ldflags="-s -w" -o bin/createVote     rest/votes/createVote/main.go
+          go build -ldflags="-s -w" -o bin/deleteVote     rest/votes/deleteVote/main.go
+          go build -ldflags="-s -w" -o bin/chuneMachine   lambda/chunemachine/main.go
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: go-binaries
+          path: bin/*
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+
+      - name: Install serverless
+        run: npm install -g serverless
+      
+      - name: Deploy
+        run: serverless --version
