@@ -19,3 +19,5 @@ bin
 
 scratch/
 .idea/
+
+env.yml

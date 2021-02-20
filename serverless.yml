@@ -6,11 +6,7 @@ provider:
   runtime: go1.x
   region: ap-southeast-2
   stage: ${opt:staging, 'dev'}
-  iamRoleStatements:
-    - Effect: 'Allow'
-      Action:
-        - dynamodb:*
-      Resource: "*"
+  role: arn:aws:iam::292374005836:role/lambda-jaypi
   environment:
     JAYPI_TABLE: jaypi
 
@@ -21,6 +17,25 @@ package:
     - ./bin/**
 
 functions:
+
+  # Chune Machine
+  chuneMachine:
+    handler: bin/chuneMachine
+    name: chune-machine-${self:provider.stage}
+    description: "Listen to what's playing on JJJ"
+    memorySize: 128
+    timeout: 20
+    reservedConcurrency: 1
+    environment:
+      SPOTIFY_CLIENT_ID: ${file(env.yml):SpotifyClientID}
+      SPOTIFY_SECRET_ID: ${file(env.yml):SpotifySecretID}
+      REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/chune-refresh-${self:provider.stage}
+      COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/bean-counter-${self:provider.stage}
+    events:
+      - sqs:
+          arn: arn:aws:sqs:ap-southeast-2:292374005836:chune-refresh-${self:provider.stage}
+          batchSize: 1
+          enabled: true
 
   # USERS
   createUser:

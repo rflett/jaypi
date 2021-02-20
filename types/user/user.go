@@ -178,7 +178,12 @@ func (u *User) Update() (status int, error error) {
 // AddVote adds a song as a votes for the user
 func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 	// check if song exists and add it if it doesn't
-	if exists := s.Exists(); exists == nil {
+	exists, existsErr := s.Exists()
+	if existsErr != nil {
+		return http.StatusInternalServerError, existsErr
+	}
+
+	if !exists {
 		createSongErr := s.Create()
 		if createSongErr != nil {
 			return http.StatusInternalServerError, createSongErr

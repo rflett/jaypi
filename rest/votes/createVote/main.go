@@ -14,6 +14,7 @@ import (
 type requestBody struct {
 	SongID   string `json:"songID"`
 	Name     string `json:"name"`
+	Album    string `json:"album"`
 	Artist   string `json:"artist"`
 	Position int    `json:"position"`
 }
@@ -35,6 +36,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	s := song.Song{
 		SongID: reqBody.SongID,
 		Name:   reqBody.Name,
+		Album:  reqBody.Album,
 		Artist: reqBody.Artist,
 	}
 
