@@ -74,7 +74,7 @@ func queueForSelf(s *song.Song, nextUpdated *time.Time) error {
 	// queue delay
 	diff := nextUpdated.Unix() - now
 	var delaySeconds int64
-	if diff < 0 {
+	if diff <= 0 {
 		// don't set it to 0 or the lambda will trigger over and over rapidly
 		delaySeconds = 10
 	} else {
@@ -188,11 +188,19 @@ func getNowPlaying() (*song.Song, *time.Time) {
 		playedAt = playedTime.Format(time.RFC3339)
 	}
 
+	// get artwork
+	var artwork []jjj.ArtworkSize
+	if len(response.Now.Release.Artwork) == 0 {
+		artwork = nil
+	} else {
+		artwork = response.Now.Release.Artwork[0].Sizes
+	}
+
 	return &song.Song{
 		Name:     title,
 		Album:    response.Now.Release.Title,
 		Artist:   response.Now.Release.Artists[0].Name,
-		Artwork:  &response.Now.Release.Artwork[0].Sizes,
+		Artwork:  &artwork,
 		PlayedAt: &playedAt,
 	}, &nextUpdated
 }
