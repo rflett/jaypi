@@ -70,7 +70,7 @@ jobs:
 
       - name: Set file permissions
         working-directory: bin
-        run: chmod 644 $(find . -type f)
+        run: chmod 755 $(find . -type f)
 
       - name: Deploy
         env:
