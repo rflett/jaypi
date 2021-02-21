@@ -25,6 +25,7 @@ const (
 	PrimaryKey     = "USER"
 	SortKey        = "SONG"
 	SecondaryIndex = "GSI1"
+	MessageBatch   = 10
 )
 
 var (
@@ -47,12 +48,11 @@ type beanMessageBody struct {
 
 // queueForScorer takes a slice of userIDs and the score to give them and batches them onto SQS
 func queueForScorer(score *int, userIDs []string) error {
-	messageBatch := 2
 	voterCount := len(userIDs)
 
 	// loop through the userIDs and send them to SQS in batches of messageBatch
-	for i := 0; i < voterCount; i += messageBatch {
-		j := i + messageBatch
+	for i := 0; i < voterCount; i += MessageBatch {
+		j := i + MessageBatch
 		if j > voterCount {
 			j = voterCount
 		}
