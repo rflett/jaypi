@@ -129,7 +129,9 @@ func getVoters(songID string) (voters []string, err error) {
 			if unMarshErr != nil {
 				logger.Log.Error().Err(unMarshErr).Msg("error unmarshalling item to user")
 			}
-			voters = append(voters, voter.UserID)
+			if voter.UserID != "" {
+				voters = append(voters, voter.UserID)
+			}
 		}
 		return !lastPage
 	})
@@ -172,6 +174,10 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	if getVotersErr != nil {
 		logger.Log.Error().Err(getVotersErr).Str("songID", mb.SongID).Msg("Unable to get voters for the song")
 		return getVotersErr
+	}
+	if len(voters) == 0 {
+		logger.Log.Info().Str("songID", mb.SongID).Msg("No-one voted for this song")
+		return nil
 	}
 
 	// queue the voters and their score for the scorer function to process
