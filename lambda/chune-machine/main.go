@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	logger "jjj.rflett.com/jjj-api/log"
 	"jjj.rflett.com/jjj-api/types/jjj"
+	"jjj.rflett.com/jjj-api/types/messages"
 	"jjj.rflett.com/jjj-api/types/song"
 	"net/http"
 	"os"
@@ -30,23 +31,10 @@ var (
 	beanCounterQueue  = os.Getenv("COUNTER_QUEUE")
 )
 
-type messageBody struct {
-	SongID       string `json:"songID"`
-	DelaySeconds *int64 `json:"delaySeconds"`
-}
-
-type jjjResponseBody struct {
-	LastUpdated string    `json:"last_updated"`
-	NextUpdated string    `json:"next_updated"` // use this to trigger the lambda next? plus on a basic interval if required
-	Next        *jjj.Play `json:"next"`
-	Now         *jjj.Play `json:"now"`
-	Prev        *jjj.Play `json:"prev"`
-}
-
 // queueForCounter puts the songID on a queue to trigger the counter lambdas
 func queueForCounter(songID *string) error {
 	// create message body
-	mb, _ := json.Marshal(messageBody{SongID: *songID})
+	mb, _ := json.Marshal(messages.BeanCounterBody{SongID: *songID})
 	input := &sqs.SendMessageInput{
 		DelaySeconds: aws.Int64(0),
 		MessageBody:  aws.String(string(mb)),
@@ -82,7 +70,7 @@ func queueForSelf(s *song.Song, nextUpdated *time.Time) error {
 	}
 
 	// create message body
-	mb, _ := json.Marshal(messageBody{SongID: s.SongID, DelaySeconds: &delaySeconds})
+	mb, _ := json.Marshal(messages.ChuneRefreshBody{SongID: s.SongID})
 	input := &sqs.SendMessageInput{
 		DelaySeconds: &delaySeconds,
 		MessageBody:  aws.String(string(mb)),
@@ -158,7 +146,7 @@ func getNowPlaying() (*song.Song, *time.Time) {
 	defer nowPlaying.Body.Close()
 
 	// unmarshal response
-	response := jjjResponseBody{}
+	response := jjj.ResponseBody{}
 	bodyBytes, _ := ioutil.ReadAll(nowPlaying.Body)
 	jsonErr := json.Unmarshal(bodyBytes, &response)
 	if jsonErr != nil {
@@ -207,7 +195,7 @@ func getNowPlaying() (*song.Song, *time.Time) {
 
 func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	// unmarshall sqsEvent to messageBody
-	mb := messageBody{}
+	mb := messages.ChuneRefreshBody{}
 	jsonErr := json.Unmarshal([]byte(sqsEvent.Records[0].Body), &mb)
 	if jsonErr != nil {
 		logger.Log.Error().Err(jsonErr).Msg("Unable to unmarshal sqsEvent body to messageBody struct")

@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/dchest/uniuri"
 	logger "jjj.rflett.com/jjj-api/log"
+	"jjj.rflett.com/jjj-api/types/messages"
 	"jjj.rflett.com/jjj-api/types/song"
 	"jjj.rflett.com/jjj-api/types/user"
 	"math/rand"
@@ -36,18 +37,8 @@ var (
 	scorerQueue   = os.Getenv("SCORER_QUEUE")
 )
 
-type scorerMessageBody struct {
-	Score  int    `json:"score"`
-	UserID string `json:"userID"`
-}
-
-type beanMessageBody struct {
-	SongID       string `json:"songID"`
-	DelaySeconds *int64 `json:"delaySeconds"`
-}
-
 // queueForScorer takes a slice of userIDs and the score to give them and batches them onto SQS
-func queueForScorer(score *int, userIDs []string) error {
+func queueForScorer(points *int, userIDs []string) error {
 	voterCount := len(userIDs)
 
 	// loop through the userIDs and send them to SQS in batches of messageBatch
@@ -60,7 +51,7 @@ func queueForScorer(score *int, userIDs []string) error {
 		// create the batch of messageBatch entries
 		var entries []*sqs.SendMessageBatchRequestEntry
 		for _, userID := range userIDs[i:j] {
-			mb, _ := json.Marshal(scorerMessageBody{UserID: userID, Score: *score})
+			mb, _ := json.Marshal(messages.ScoreTakerBody{UserID: userID, Points: *points})
 			e := sqs.SendMessageBatchRequestEntry{
 				Id:          aws.String(uniuri.NewLen(6)),
 				MessageBody: aws.String(string(mb)),
@@ -92,13 +83,13 @@ func queueForScorer(score *int, userIDs []string) error {
 	return nil
 }
 
-// calculateScore determines what score to give users for their song
-func calculateScore(songPosition *int) *int {
-	// TODO this is just a random score but we need to decide what to do here
-	var score int
+// calculatePoints determines what score to give users for their song
+func calculatePoints(songPosition *int) *int {
+	// TODO this is just a random points but we need to decide what to do here
+	var points int
 	rand.Seed(time.Now().UTC().UnixNano())
-	score = *songPosition + rand.Intn(100)
-	return &score
+	points = *songPosition + rand.Intn(100)
+	return &points
 }
 
 // getVoters returns the IDs of users who voted for a particular song
@@ -146,7 +137,7 @@ func getVoters(songID string) (voters []string, err error) {
 
 func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	// unmarshall sqsEvent to messageBody
-	mb := beanMessageBody{}
+	mb := messages.BeanCounterBody{}
 	jsonErr := json.Unmarshal([]byte(sqsEvent.Records[0].Body), &mb)
 	if jsonErr != nil {
 		logger.Log.Error().Err(jsonErr).Msg("Unable to unmarshal sqsEvent body to messageBody struct")
@@ -161,13 +152,13 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 		return getSongErr
 	}
 
-	// calculate score for users who voted for this song
+	// calculate points for users who voted for this song
 	if s.PlayedPosition == nil {
 		playPosMissingErr := errors.New("playedPosition is nil")
 		logger.Log.Error().Err(playPosMissingErr).Str("songID", mb.SongID).Msg("Song hasn't been played yet")
 		return playPosMissingErr
 	}
-	score := calculateScore(s.PlayedPosition)
+	points := calculatePoints(s.PlayedPosition)
 
 	// find the voters of this song
 	voters, getVotersErr := getVoters(s.SongID)
@@ -180,8 +171,8 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 		return nil
 	}
 
-	// queue the voters and their score for the scorer function to process
-	queueErr := queueForScorer(score, voters)
+	// queue the voters and their points for the scorer function to process
+	queueErr := queueForScorer(points, voters)
 	if queueErr != nil {
 		logger.Log.Error().Err(getVotersErr).Str("songID", mb.SongID).Msg("Unable to queue voters for scoring")
 	}

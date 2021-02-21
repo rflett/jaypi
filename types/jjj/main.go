@@ -80,3 +80,11 @@ type Play struct {
 	Recording  Recording `json:"recording"`
 	Release    Release   `json:"release"`
 }
+
+type ResponseBody struct {
+	LastUpdated string `json:"last_updated"`
+	NextUpdated string `json:"next_updated"`
+	Next        *Play  `json:"next"`
+	Now         *Play  `json:"now"`
+	Prev        *Play  `json:"prev"`
+}

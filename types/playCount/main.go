@@ -20,11 +20,11 @@ var (
 	table         = os.Getenv("JAYPI_TABLE")
 )
 
-type songCount struct {
+type playCount struct {
 	Value *string `json:"value"`
 }
 
-// GetCurrentPlayCount looks up the current songCount item and returns its value
+// GetCurrentPlayCount looks up the current playCount item and returns its value
 func GetCurrentPlayCount() (*string, error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeNames: map[string]*string{
@@ -48,16 +48,16 @@ func GetCurrentPlayCount() (*string, error) {
 		return aws.String("0"), err
 	}
 
-	var sc = songCount{}
+	var sc = playCount{}
 	unmarshalErr := dynamodbattribute.UnmarshalMap(result.Items[0], &sc)
 	if unmarshalErr != nil {
-		logger.Log.Error().Err(unmarshalErr).Msg("Unable to unmarshall query result to songCount")
+		logger.Log.Error().Err(unmarshalErr).Msg("Unable to unmarshall query result to playCount")
 		return aws.String("0"), unmarshalErr
 	}
 	return sc.Value, nil
 }
 
-// IncrementPlayCount increments the current songCount value
+// IncrementPlayCount increments the current playCount value
 func IncrementPlayCount() {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
