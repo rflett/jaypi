@@ -53,6 +53,20 @@ functions:
           batchSize: 1
           enabled: true
 
+  # Score Taker
+  scoreTaker:
+    handler: bin/scoreTaker
+    name: score-taker-${self:provider.stage}
+    description: "Update each voters score"
+    memorySize: 128
+    timeout: 20
+    reservedConcurrency: 1
+    events:
+      - sqs:
+          arn: arn:aws:sqs:ap-southeast-2:292374005836:scorer-${self:provider.stage}
+          batchSize: 1
+          enabled: true
+
   # USERS
   createUser:
     handler: bin/createUser

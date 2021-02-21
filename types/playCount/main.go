@@ -77,7 +77,7 @@ func IncrementPlayCount() {
 			},
 		},
 		ReturnValues:     aws.String("NONE"),
-		TableName:        aws.String("jaypi"),
+		TableName:        &table,
 		UpdateExpression: aws.String("ADD #V :inc"),
 	}
 	_, err := db.UpdateItem(input)

@@ -12,7 +12,7 @@ import (
 	logger "jjj.rflett.com/jjj-api/log"
 	"jjj.rflett.com/jjj-api/types/song"
 	"net/http"
-	"os"
+	"strconv"
 	"time"
 )
 
@@ -24,7 +24,8 @@ const (
 var (
 	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
 	db            = dynamodb.New(awsSession)
-	table         = os.Getenv("JAYPI_TABLE")
+	//table         = os.Getenv("JAYPI_TABLE")
+	table = "jaypi"
 )
 
 // User is a User of the application
@@ -317,4 +318,34 @@ func Get(userID string) (user User, status int, error error) {
 	}
 
 	return user, http.StatusOK, nil
+}
+
+// UpdatePoints adds the points to the users score
+func (u *User) UpdatePoints(points int) error {
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#P": aws.String("points"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":p": {
+				N: aws.String(strconv.Itoa(points)),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SortKey, u.UserID)),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &table,
+		UpdateExpression: aws.String("ADD #P :p"),
+	}
+	_, err := db.UpdateItem(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Unable to update the users points")
+	}
+	return nil
 }
