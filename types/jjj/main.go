@@ -78,7 +78,7 @@ type Play struct {
 	PlayedTime string    `json:"played_time"`
 	ServiceID  string    `json:"service_id"`
 	Recording  Recording `json:"recording"`
-	Release    Release   `json:"release"`
+	Release    *Release  `json:"release"`
 }
 
 type ResponseBody struct {

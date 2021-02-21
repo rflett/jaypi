@@ -178,7 +178,7 @@ func getNowPlaying() (*song.Song, *time.Time) {
 
 	// get artwork
 	var artwork []jjj.ArtworkSize
-	if len(response.Now.Release.Artwork) == 0 {
+	if len(response.Now.Release.Artwork) == 0 || response.Now.Release == nil {
 		artwork = nil
 	} else {
 		artwork = response.Now.Release.Artwork[0].Sizes
