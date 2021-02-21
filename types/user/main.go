@@ -46,6 +46,7 @@ type songVote struct {
 	PK       string `json:"-" dynamodbav:"PK"`
 	SK       string `json:"-" dynamodbav:"SK"`
 	SongID   string `json:"songID"`
+	UserID   string `json:"userID"`
 	Position int    `json:"position"`
 }
 
@@ -206,6 +207,7 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 		PK:       fmt.Sprintf("%s#%s", PrimaryKey, u.UserID),
 		SK:       fmt.Sprintf("%s#%s", "SONG", s.SongID),
 		SongID:   s.SongID,
+		UserID:   u.UserID,
 		Position: position,
 	}
 

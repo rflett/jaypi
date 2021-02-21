@@ -50,20 +50,24 @@ resource "aws_iam_role_policy" "jaypi" {
       {
         Effect = "Allow"
         Action = [
+          "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Scan",
           "dynamodb:Query",
           "sqs:SendMessage",
+          "sqs:SendMessageBatch",
           "sqs:DeleteMessage",
           "sqs:ReceiveMessage",
           "sqs:GetQueueAttributes"
         ],
         Resource = [
-          aws_dynamodb_table.jaypi.arn,
           aws_sqs_queue.chune_refresh.arn,
-          aws_sqs_queue.bean_counter.arn
+          aws_sqs_queue.bean_counter.arn,
+          aws_sqs_queue.scorer.arn,
+          aws_dynamodb_table.jaypi.arn,
+          "${aws_dynamodb_table.jaypi.arn}/*"
         ]
       },
       {
@@ -87,6 +91,12 @@ resource "aws_sqs_queue" "chune_refresh" {
 
 resource "aws_sqs_queue" "bean_counter" {
   name                       = "bean-counter-${terraform.workspace}"
+  delay_seconds              = 0
+  visibility_timeout_seconds = 30
+}
+
+resource "aws_sqs_queue" "scorer" {
+  name                       = "scorer-${terraform.workspace}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
 }

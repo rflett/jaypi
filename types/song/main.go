@@ -1,6 +1,7 @@
 package song
 
 import (
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -124,7 +125,7 @@ func (s *Song) Exists() (bool, error) {
 	return true, nil
 }
 
-// Update the song
+// Played marks the song as played and records its play time and position
 func (s *Song) Played() error {
 	pk := dynamodb.AttributeValue{
 		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, s.SongID)),
@@ -174,5 +175,41 @@ func (s *Song) Played() error {
 	}
 
 	playCount.IncrementPlayCount()
+	return nil
+}
+
+// Get the song from the table
+func (s *Song) Get() error {
+	// get query
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, s.SongID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SortKey, s.SongID)),
+			},
+		},
+		TableName: &table,
+	}
+
+	// getItem
+	result, err := db.GetItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("error getting song from table")
+		return err
+	}
+
+	if len(result.Item) == 0 {
+		return errors.New("unable to find song in table")
+	}
+
+	// unmarshal item into struct
+	err = dynamodbattribute.UnmarshalMap(result.Item, &s)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("failed to unmarshal dynamo item to group")
+	}
 	return nil
 }

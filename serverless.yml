@@ -37,6 +37,22 @@ functions:
           batchSize: 1
           enabled: true
 
+  # Bean Counter
+  beanCounter:
+    handler: bin/beanCounter
+    name: bean-counter-${self:provider.stage}
+    description: "Calculate everyone's points when a song is played"
+    memorySize: 128
+    timeout: 20
+    reservedConcurrency: 1
+    environment:
+      SCORER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/scorer-${self:provider.stage}
+    events:
+      - sqs:
+          arn: arn:aws:sqs:ap-southeast-2:292374005836:bean-counter-${self:provider.stage}
+          batchSize: 1
+          enabled: true
+
   # USERS
   createUser:
     handler: bin/createUser

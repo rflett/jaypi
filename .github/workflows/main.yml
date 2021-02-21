@@ -39,7 +39,8 @@ jobs:
           go build -ldflags="-s -w" -o bin/getGroupQR     rest/group/getGroupQR/main.go
           go build -ldflags="-s -w" -o bin/createVote     rest/votes/createVote/main.go
           go build -ldflags="-s -w" -o bin/deleteVote     rest/votes/deleteVote/main.go
-          go build -ldflags="-s -w" -o bin/chuneMachine   lambda/chunemachine/main.go
+          go build -ldflags="-s -w" -o bin/chuneMachine   lambda/chune-machine/main.go
+          go build -ldflags="-s -w" -o bin/beanCounter    lambda/bean-counter/main.go
 
       - name: Upload binaries
         uses: actions/upload-artifact@v2
@@ -69,7 +70,7 @@ jobs:
 
       - name: Set file permissions
         working-directory: bin
-        run: chmod 755 $(find . -type f)
+        run: chmod 644 $(find . -type f)
 
       - name: Deploy
         env:
