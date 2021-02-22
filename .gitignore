@@ -1,9 +1,6 @@
 # Serverless directories
 .serverless
 
-# golang output binary directory
-bin
-
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -21,3 +18,5 @@ scratch/
 .idea/
 
 env.yml
+
+terraform/.terraform

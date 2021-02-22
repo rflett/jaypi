@@ -24,9 +24,11 @@ jobs:
           go-version: 1.15
 
       - name: Get Dependencies
+        working-directory: source/
         run: go mod download
 
       - name: Build
+        working-directory: source/
         run: |
           go build -ldflags="-s -w" -o bin/createUser     rest/user/createUser/main.go
           go build -ldflags="-s -w" -o bin/getUser        rest/user/getUser/main.go
@@ -50,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: go-binaries
-          path: bin/*
+          path: source/bin/*
 
   deploy:
     name: Deploy
@@ -62,7 +64,7 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: go-binaries
-          path: bin
+          path: source/bin
 
       - name: Setup Node
         uses: actions/setup-node@v1
@@ -73,7 +75,7 @@ jobs:
         run: npm install -g serverless
 
       - name: Set file permissions
-        working-directory: bin
+        working-directory: source/bin
         run: chmod 755 $(find . -type f)
 
       - name: Deploy

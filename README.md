@@ -18,14 +18,14 @@ Build it first with `./build.sh` then start the function with its corresponding 
 
 ```bash
 # build the binaries used by serverless
-./build.sh
+cd source
+./build.ps1
 
 # invoke the function you want with its mock data
+cd ..
 serverless invoke local -f getUser --path mock/user/get.json
 ```
 
 ## Deployment
-```bash
-./build.sh
-serverless deploy
-```
+
+Push to GitHub and the workflow will build and deploy.

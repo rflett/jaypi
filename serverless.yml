@@ -1,4 +1,4 @@
-service: jjj-api
+service: types-api
 frameworkVersion: '>=2.25.2 < 3.0.0'
 
 provider:
@@ -14,13 +14,13 @@ package:
   exclude:
     - ./**
   include:
-    - ./bin/**
+    - ./source/bin/**
 
 functions:
 
   # Chune Machine
   chuneMachine:
-    handler: bin/chuneMachine
+    handler: source/bin/chuneMachine
     name: chune-machine-${self:provider.stage}
     description: "Listen to what's playing on JJJ"
     memorySize: 128
@@ -39,7 +39,7 @@ functions:
 
   # Bean Counter
   beanCounter:
-    handler: bin/beanCounter
+    handler: source/bin/beanCounter
     name: bean-counter-${self:provider.stage}
     description: "Calculate everyone's points when a song is played"
     memorySize: 128
@@ -55,7 +55,7 @@ functions:
 
   # Score Taker
   scoreTaker:
-    handler: bin/scoreTaker
+    handler: source/bin/scoreTaker
     name: score-taker-${self:provider.stage}
     description: "Update each voters score"
     memorySize: 128
@@ -69,7 +69,7 @@ functions:
 
   # USERS
   createUser:
-    handler: bin/createUser
+    handler: source/bin/createUser
     name: create-user-${self:provider.stage}
     description: "Create a user"
     memorySize: 128
@@ -83,7 +83,7 @@ functions:
               application/json: ${file(schemas/user/create.json)}
 
   getUser:
-    handler: bin/getUser
+    handler: source/bin/getUser
     name: get-user-${self:provider.stage}
     description: "Get a user"
     memorySize: 128
@@ -94,7 +94,7 @@ functions:
           method: get
 
   updateUser:
-    handler: bin/updateUser
+    handler: source/bin/updateUser
     name: update-user-${self:provider.stage}
     description: "Update a user"
     memorySize: 128
@@ -109,7 +109,7 @@ functions:
 
   # GROUPS
   createGroup:
-    handler: bin/createGroup
+    handler: source/bin/createGroup
     name: create-group-${self:provider.stage}
     description: "Creates a group"
     memorySize: 128
@@ -123,7 +123,7 @@ functions:
               application/json: ${file(schemas/group/create.json)}
 
   getGroup:
-    handler: bin/getGroup
+    handler: source/bin/getGroup
     name: get-group-${self:provider.stage}
     description: "Get a group"
     memorySize: 128
@@ -134,7 +134,7 @@ functions:
           method: get
 
   updateGroup:
-    handler: bin/updateGroup
+    handler: source/bin/updateGroup
     name: update-group-${self:provider.stage}
     description: "Update a group"
     memorySize: 128
@@ -148,7 +148,7 @@ functions:
               application/json: ${file(schemas/group/update.json)}
 
   joinGroup:
-    handler: bin/joinGroup
+    handler: source/bin/joinGroup
     name: join-group-${self:provider.stage}
     description: "Join a group"
     memorySize: 128
@@ -162,7 +162,7 @@ functions:
               application/json: ${file(schemas/group/join.json)}
 
   leaveGroup:
-    handler: bin/leaveGroup
+    handler: source/bin/leaveGroup
     name: leave-group-${self:provider.stage}
     description: "Leave a group"
     memorySize: 128
@@ -173,7 +173,7 @@ functions:
           method: delete
 
   getGroupQR:
-    handler: bin/getGroupQR
+    handler: source/bin/getGroupQR
     name: get-group-qr-${self:provider.stage}
     description: "Get the QR invite for a group"
     memorySize: 128
@@ -185,7 +185,7 @@ functions:
 
  # VOTES
   createVote:
-    handler: bin/createVote
+    handler: source/bin/createVote
     name: create-vote-${self:provider.stage}
     description: "Create a vote"
     memorySize: 128
@@ -199,7 +199,7 @@ functions:
               application/json: ${file(schemas/votes/create.json)}
 
   deleteVote:
-    handler: bin/deleteVote
+    handler: source/bin/deleteVote
     name: delete-vote-${self:provider.stage}
     description: "Delete a vote"
     memorySize: 128
