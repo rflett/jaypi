@@ -1,30 +1,17 @@
-package song
+package types
 
 import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"jjj.rflett.com/jjj-api/clients"
 	logger "jjj.rflett.com/jjj-api/log"
 	"jjj.rflett.com/jjj-api/types/jjj"
-	"jjj.rflett.com/jjj-api/types/playCount"
-	"os"
 	"regexp"
 	"time"
-)
-
-const (
-	PrimaryKey = "SONG"
-	SortKey    = "#PROFILE"
-)
-
-var (
-	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
-	db            = dynamodb.New(awsSession)
-	table         = os.Getenv("JAYPI_TABLE")
 )
 
 // Song is a Song that a user can votes for
@@ -51,8 +38,8 @@ func (s *Song) SearchString() string {
 // Create the song
 func (s *Song) Create() error {
 	// set fields
-	s.PK = fmt.Sprintf("%s#%s", PrimaryKey, s.SongID)
-	s.SK = fmt.Sprintf("%s#%s", SortKey, s.SongID)
+	s.PK = fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)
+	s.SK = fmt.Sprintf("%s#%s", SongSortKey, s.SongID)
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 	s.CreatedAt = &createdAt
 
@@ -63,11 +50,11 @@ func (s *Song) Create() error {
 	input := &dynamodb.PutItemInput{
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
-		TableName:    &table,
+		TableName:    &clients.DynamoTable,
 	}
 
 	// add to table
-	_, err := db.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(input)
 
 	// handle errors
 	if err != nil {
@@ -85,19 +72,19 @@ func (s *Song) Exists() (bool, error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, s.SongID)),
+				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
 			},
 			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", SortKey, s.SongID)),
+				S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
 			},
 		},
 		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
 		ProjectionExpression:   aws.String("songID"),
-		TableName:              &table,
+		TableName:              &clients.DynamoTable,
 	}
 
 	// query
-	result, err := db.Query(input)
+	result, err := clients.DynamoClient.Query(input)
 
 	// handle errors
 	if err != nil {
@@ -128,14 +115,14 @@ func (s *Song) Exists() (bool, error) {
 // Played marks the song as played and records its play time and position
 func (s *Song) Played() error {
 	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, s.SongID)),
+		S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
 	}
 	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", SortKey, s.SongID)),
+		S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
 	}
 
 	// get current played count
-	currentPlayCount, playCountErr := playCount.GetCurrentPlayCount()
+	currentPlayCount, playCountErr := getCurrentPlayCount()
 	if playCountErr != nil {
 		return playCountErr
 	}
@@ -161,12 +148,12 @@ func (s *Song) Played() error {
 			"SK": &sk,
 		},
 		ReturnValues:        aws.String("NONE"),
-		TableName:           &table,
+		TableName:           &clients.DynamoTable,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #PA = :pa, #PP = :pp"),
 	}
 
-	_, err := db.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(input)
 
 	// handle errors
 	if err != nil {
@@ -174,7 +161,7 @@ func (s *Song) Played() error {
 		return err
 	}
 
-	playCount.IncrementPlayCount()
+	incrementPlayCount()
 	return nil
 }
 
@@ -184,17 +171,17 @@ func (s *Song) Get() error {
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, s.SongID)),
+				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SortKey, s.SongID)),
+				S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
 			},
 		},
-		TableName: &table,
+		TableName: &clients.DynamoTable,
 	}
 
 	// getItem
-	result, err := db.GetItem(input)
+	result, err := clients.DynamoClient.GetItem(input)
 
 	// handle errors
 	if err != nil {
@@ -212,4 +199,66 @@ func (s *Song) Get() error {
 		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("failed to unmarshal dynamo item to group")
 	}
 	return nil
+}
+
+// getCurrentPlayCount looks up the current playCount item and returns its value
+func getCurrentPlayCount() (*string, error) {
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#V": aws.String("value"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(PlayCountPrimaryKey),
+			},
+			":sk": {
+				S: aws.String(PlayCountSortKey),
+			},
+		},
+		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
+		ProjectionExpression:   aws.String("#V"),
+		TableName:              &clients.DynamoTable,
+	}
+	result, err := clients.DynamoClient.Query(input)
+	if err != nil || *result.Count == 0 {
+		logger.Log.Error().Err(err).Msg("Unable to get the latest song position")
+		return aws.String("0"), err
+	}
+
+	var pc = PlayCount{}
+	unmarshalErr := dynamodbattribute.UnmarshalMap(result.Items[0], &pc)
+	if unmarshalErr != nil {
+		logger.Log.Error().Err(unmarshalErr).Msg("Unable to unmarshall query result to playCount")
+		return aws.String("0"), unmarshalErr
+	}
+	return pc.Value, nil
+}
+
+// incrementPlayCount increments the current playCount value
+func incrementPlayCount() {
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#V": aws.String("value"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":inc": {
+				N: aws.String("1"),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(PlayCountPrimaryKey),
+			},
+			"SK": {
+				S: aws.String(PlayCountSortKey),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("ADD #V :inc"),
+	}
+	_, err := clients.DynamoClient.UpdateItem(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to increment the latest song position")
+	}
 }

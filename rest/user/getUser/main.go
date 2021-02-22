@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"jjj.rflett.com/jjj-api/types/user"
+	"jjj.rflett.com/jjj-api/types"
 )
 
 // Handler is our handle on life
@@ -13,15 +13,16 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	userID := request.PathParameters["userId"]
 
 	// get user
-	u, responseStatus, err := user.Get(userID)
+	u := types.User{UserID: userID}
+	status, err := u.Get()
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: responseStatus}, nil
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
 	}
 
 	// response
 	responseBody, _ := json.Marshal(u)
 	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: responseStatus, Headers: headers}, nil
+	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: status, Headers: headers}, nil
 }
 
 func main() {

@@ -2,8 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"jjj.rflett.com/jjj-api/types/song"
-	"jjj.rflett.com/jjj-api/types/user"
+	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -32,8 +31,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// create
-	u := user.User{UserID: userID}
-	s := song.Song{
+	u := types.User{UserID: userID}
+	s := types.Song{
 		SongID: reqBody.SongID,
 		Name:   reqBody.Name,
 		Album:  reqBody.Album,

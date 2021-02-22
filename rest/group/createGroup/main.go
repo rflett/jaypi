@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"jjj.rflett.com/jjj-api/types/group"
+	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -26,7 +26,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// create
-	g := group.Group{
+	g := types.Group{
 		OwnerID: reqBody.OwnerID,
 		Name:    reqBody.Name,
 	}

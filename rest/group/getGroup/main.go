@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"jjj.rflett.com/jjj-api/types/group"
+	"jjj.rflett.com/jjj-api/types"
 )
 
 // Handler is our handle on life
@@ -13,7 +13,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	groupID := request.PathParameters["groupId"]
 
 	// get group
-	g, responseStatus, err := group.Get(groupID)
+	g := types.Group{GroupID: groupID}
+	responseStatus, err := g.Get()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: responseStatus}, nil
 	}

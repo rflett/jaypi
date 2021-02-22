@@ -1,7 +1,7 @@
 package main
 
 import (
-	"jjj.rflett.com/jjj-api/types/user"
+	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -15,7 +15,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	songID := request.PathParameters["songId"]
 
 	// create
-	u := user.User{UserID: userID}
+	u := types.User{UserID: userID}
 	deleteStatus, deleteErr := u.RemoveVote(&songID)
 	if deleteErr != nil {
 		return events.APIGatewayProxyResponse{Body: deleteErr.Error(), StatusCode: deleteStatus}, nil

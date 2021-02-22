@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"jjj.rflett.com/jjj-api/types/group"
+	"jjj.rflett.com/jjj-api/services"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -26,7 +26,12 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// join
-	g, joinStatus, joinErr := group.Join(reqBody.UserID, reqBody.Code)
+	g, getGroupErr := services.GetGroupFromCode(reqBody.Code)
+	if getGroupErr != nil {
+		return events.APIGatewayProxyResponse{Body: getGroupErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	}
+
+	joinStatus, joinErr := g.AddUser(reqBody.UserID)
 	if joinErr != nil {
 		return events.APIGatewayProxyResponse{Body: joinErr.Error(), StatusCode: joinStatus}, nil
 	}

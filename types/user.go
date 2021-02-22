@@ -1,31 +1,18 @@
-package user
+package types
 
 import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/google/uuid"
+	"jjj.rflett.com/jjj-api/clients"
 	logger "jjj.rflett.com/jjj-api/log"
-	"jjj.rflett.com/jjj-api/types/song"
 	"net/http"
 	"strconv"
 	"time"
-)
-
-const (
-	PrimaryKey = "USER"
-	SortKey    = "#PROFILE"
-)
-
-var (
-	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
-	db            = dynamodb.New(awsSession)
-	//table         = os.Getenv("JAYPI_TABLE")
-	table = "jaypi"
 )
 
 // User is a User of the application
@@ -57,7 +44,7 @@ func (u *User) voteCount() (count int, error error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			":sk": {
 				S: aws.String(fmt.Sprintf("%s#", "SONG")),
@@ -65,10 +52,10 @@ func (u *User) voteCount() (count int, error error) {
 		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
 		ProjectionExpression:   aws.String("userID"),
-		TableName:              &table,
+		TableName:              &clients.DynamoTable,
 	}
 
-	queryResult, queryErr := db.Query(input)
+	queryResult, queryErr := clients.DynamoClient.Query(input)
 	if queryErr != nil {
 		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting user song count")
 		return 0, queryErr
@@ -80,8 +67,8 @@ func (u *User) voteCount() (count int, error error) {
 func (u *User) Create() (status int, error error) {
 	// set fields
 	u.UserID = uuid.NewString()
-	u.PK = fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)
-	u.SK = fmt.Sprintf("%s#%s", SortKey, u.UserID)
+	u.PK = fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)
+	u.SK = fmt.Sprintf("%s#%s", UserSortKey, u.UserID)
 	u.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	// create item
@@ -89,13 +76,13 @@ func (u *User) Create() (status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    &table,
+		TableName:    &clients.DynamoTable,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
 
 	// add to table
-	_, err := db.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(input)
 
 	// handle errors
 	if err != nil {
@@ -114,10 +101,10 @@ func (u *User) Update() (status int, error error) {
 	u.UpdatedAt = &updatedAt
 
 	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+		S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 	}
 	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", SortKey, u.UserID)),
+		S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
 	}
 
 	// update query
@@ -141,12 +128,12 @@ func (u *User) Update() (status int, error error) {
 			"SK": &sk,
 		},
 		ReturnValues:        aws.String("NONE"),
-		TableName:           &table,
+		TableName:           &clients.DynamoTable,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
-	_, err := db.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(input)
 
 	// handle errors
 	if err != nil {
@@ -178,7 +165,7 @@ func (u *User) Update() (status int, error error) {
 }
 
 // AddVote adds a song as a votes for the user
-func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
+func (u *User) AddVote(s *Song, position int) (status int, error error) {
 	// check if song exists and add it if it doesn't
 	exists, existsErr := s.Exists()
 	if existsErr != nil {
@@ -205,7 +192,7 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 
 	// set fields
 	sv := songVote{
-		PK:       fmt.Sprintf("%s#%s", PrimaryKey, u.UserID),
+		PK:       fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID),
 		SK:       fmt.Sprintf("%s#%s", "SONG", s.SongID),
 		SongID:   s.SongID,
 		UserID:   u.UserID,
@@ -217,11 +204,11 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 	input := &dynamodb.PutItemInput{
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
-		TableName:    &table,
+		TableName:    &clients.DynamoTable,
 	}
 
 	// add to table
-	_, err := db.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(input)
 
 	// handle errors
 	if err != nil {
@@ -237,7 +224,7 @@ func (u *User) AddVote(s *song.Song, position int) (status int, error error) {
 func (u *User) RemoveVote(songID *string) (status int, error error) {
 	// set fields
 	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+		S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 	}
 	sk := dynamodb.AttributeValue{
 		S: aws.String(fmt.Sprintf("%s#%s", "SONG", *songID)),
@@ -249,11 +236,11 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 			"PK": &pk,
 			"SK": &sk,
 		},
-		TableName: &table,
+		TableName: &clients.DynamoTable,
 	}
 
 	// delete from table
-	_, err := db.DeleteItem(input)
+	_, err := clients.DynamoClient.DeleteItem(input)
 
 	// handle errors
 	if err != nil {
@@ -266,22 +253,22 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 }
 
 // Get the user from the table
-func Get(userID string) (user User, status int, error error) {
+func (u *User) Get() (status int, error error) {
 	// get query
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, userID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SortKey, userID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
 			},
 		},
-		TableName: &table,
+		TableName: &clients.DynamoTable,
 	}
 
 	// getItem
-	result, err := db.GetItem(input)
+	result, err := clients.DynamoClient.GetItem(input)
 
 	// handle errors
 	if err != nil {
@@ -299,25 +286,25 @@ func Get(userID string) (user User, status int, error error) {
 			default:
 				responseStatus = http.StatusInternalServerError
 			}
-			logger.Log.Error().Err(aerr).Str("userID", userID).Msg("error getting user from table")
-			return User{}, responseStatus, aerr
+			logger.Log.Error().Err(aerr).Str("userID", u.UserID).Msg("error getting user from table")
+			return responseStatus, aerr
 		} else {
-			logger.Log.Error().Err(err).Str("userID", userID).Msg("error getting user from table")
-			return User{}, http.StatusInternalServerError, err
+			logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting user from table")
+			return http.StatusInternalServerError, err
 		}
 	}
 
 	if len(result.Item) == 0 {
-		return User{}, http.StatusNotFound, nil
+		return http.StatusNotFound, nil
 	}
 
 	// unmarshal item into struct
-	err = dynamodbattribute.UnmarshalMap(result.Item, &user)
+	err = dynamodbattribute.UnmarshalMap(result.Item, &u)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", userID).Msg("failed to unmarshal dynamo item to user")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
 	}
 
-	return user, http.StatusOK, nil
+	return http.StatusOK, nil
 }
 
 // UpdatePoints adds the points to the users score
@@ -333,19 +320,82 @@ func (u *User) UpdatePoints(points int) error {
 		},
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", PrimaryKey, u.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SortKey, u.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
 			},
 		},
 		ReturnValues:     aws.String("NONE"),
-		TableName:        &table,
+		TableName:        &clients.DynamoTable,
 		UpdateExpression: aws.String("ADD #P :p"),
 	}
-	_, err := db.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Unable to update the users points")
 	}
 	return nil
+}
+
+// LeaveAllGroups removes a member from all of their groups
+func (u *User) LeaveAllGroups() error {
+	// find any other groups to leave
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", "GROUP")),
+			},
+		},
+		IndexName:              aws.String(GSI),
+		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		ProjectionExpression:   aws.String("groupID"),
+		TableName:              &clients.DynamoTable,
+	}
+	groupMemberships, queryErr := clients.DynamoClient.Query(input)
+	if queryErr != nil {
+		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting users groups")
+		return queryErr
+	}
+
+	// for each group membership that the user has, leave those groups
+	for _, membership := range groupMemberships.Items {
+		gm := GroupMember{}
+		unMarshErr := dynamodbattribute.UnmarshalMap(membership, &gm)
+		if unMarshErr != nil {
+			logger.Log.Error().Err(unMarshErr).Str("userID", u.UserID).Msg("error unmarshalling group member to groupMember")
+		}
+		_, _ = u.LeaveGroup(gm.GroupID)
+	}
+	return nil
+}
+
+// LeaveGroup removes the User from a Group
+func (u *User) LeaveGroup(groupID string) (status int, error error) {
+	// delete query
+	input := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", "GROUP", groupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+
+	// delete from table
+	_, err := clients.DynamoClient.DeleteItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", u.UserID).Msg("Error removing user from group")
+		return http.StatusInternalServerError, err
+	}
+
+	logger.Log.Info().Str("groupID", groupID).Str("userID", u.UserID).Msg("User left group")
+	return http.StatusNoContent, nil
 }

@@ -8,34 +8,21 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/dchest/uniuri"
+	"jjj.rflett.com/jjj-api/clients"
 	logger "jjj.rflett.com/jjj-api/log"
-	"jjj.rflett.com/jjj-api/types/messages"
-	"jjj.rflett.com/jjj-api/types/song"
-	"jjj.rflett.com/jjj-api/types/user"
+	"jjj.rflett.com/jjj-api/types"
 	"math/rand"
 	"os"
 	"time"
 )
 
-const (
-	PrimaryKey     = "USER"
-	SortKey        = "SONG"
-	SecondaryIndex = "GSI1"
-	MessageBatch   = 10
-)
+const MessageBatch = 10
 
-var (
-	awsSession, _ = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
-	db            = dynamodb.New(awsSession)
-	queue         = sqs.New(awsSession)
-	table         = os.Getenv("JAYPI_TABLE")
-	scorerQueue   = os.Getenv("SCORER_QUEUE")
-)
+var scorerQueue = os.Getenv("SCORER_QUEUE")
 
 // queueForScorer takes a slice of userIDs and the score to give them and batches them onto SQS
 func queueForScorer(points *int, userIDs []string) error {
@@ -51,7 +38,7 @@ func queueForScorer(points *int, userIDs []string) error {
 		// create the batch of messageBatch entries
 		var entries []*sqs.SendMessageBatchRequestEntry
 		for _, userID := range userIDs[i:j] {
-			mb, _ := json.Marshal(messages.ScoreTakerBody{UserID: userID, Points: *points})
+			mb, _ := json.Marshal(types.ScoreTakerBody{UserID: userID, Points: *points})
 			e := sqs.SendMessageBatchRequestEntry{
 				Id:          aws.String(uniuri.NewLen(6)),
 				MessageBody: aws.String(string(mb)),
@@ -64,7 +51,7 @@ func queueForScorer(points *int, userIDs []string) error {
 			QueueUrl: &scorerQueue,
 			Entries:  entries,
 		}
-		sendOutput, sendErr := queue.SendMessageBatch(input)
+		sendOutput, sendErr := clients.SQSClient.SendMessageBatch(input)
 		if sendErr != nil {
 			logger.Log.Error().Err(sendErr).Msg("Unable to send message batch to SQS")
 			return sendErr
@@ -100,22 +87,22 @@ func getVoters(songID string) (voters []string, err error) {
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", SortKey, songID)),
+				S: aws.String(fmt.Sprintf("%s#%s", types.SongPrimaryKey, songID)),
 			},
 			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", PrimaryKey)),
+				S: aws.String(fmt.Sprintf("%s#", types.UserPrimaryKey)),
 			},
 		},
-		TableName:              &table,
-		IndexName:              aws.String(SecondaryIndex),
+		TableName:              &clients.DynamoTable,
+		IndexName:              aws.String(types.GSI),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("#U"),
 		Limit:                  aws.Int64(1),
 	}
 
-	queryErr := db.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
+	queryErr := clients.DynamoClient.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
 		for _, item := range page.Items {
-			voter := user.User{}
+			voter := types.User{}
 			unMarshErr := dynamodbattribute.UnmarshalMap(item, &voter)
 			if unMarshErr != nil {
 				logger.Log.Error().Err(unMarshErr).Msg("error unmarshalling item to user")
@@ -137,7 +124,7 @@ func getVoters(songID string) (voters []string, err error) {
 
 func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	// unmarshall sqsEvent to messageBody
-	mb := messages.BeanCounterBody{}
+	mb := types.BeanCounterBody{}
 	jsonErr := json.Unmarshal([]byte(sqsEvent.Records[0].Body), &mb)
 	if jsonErr != nil {
 		logger.Log.Error().Err(jsonErr).Msg("Unable to unmarshal sqsEvent body to messageBody struct")
@@ -145,7 +132,7 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	}
 
 	// get the full song details
-	s := song.Song{SongID: mb.SongID}
+	s := types.Song{SongID: mb.SongID}
 	getSongErr := s.Get()
 	if getSongErr != nil {
 		logger.Log.Error().Err(getSongErr).Str("songID", mb.SongID).Msg("Unable to get the song from the table")

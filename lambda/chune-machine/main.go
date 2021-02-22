@@ -8,15 +8,14 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/zmb3/spotify"
 	"golang.org/x/oauth2/clientcredentials"
 	"io/ioutil"
+	"jjj.rflett.com/jjj-api/clients"
 	logger "jjj.rflett.com/jjj-api/log"
+	"jjj.rflett.com/jjj-api/types"
 	"jjj.rflett.com/jjj-api/types/jjj"
-	"jjj.rflett.com/jjj-api/types/messages"
-	"jjj.rflett.com/jjj-api/types/song"
 	"net/http"
 	"os"
 	"time"
@@ -25,8 +24,6 @@ import (
 const location = "Australia/Sydney"
 
 var (
-	awsSession, _     = session.NewSession(&aws.Config{Region: aws.String("ap-southeast-2")})
-	queue             = sqs.New(awsSession)
 	chuneRefreshQueue = os.Getenv("REFRESH_QUEUE")
 	beanCounterQueue  = os.Getenv("COUNTER_QUEUE")
 )
@@ -34,7 +31,7 @@ var (
 // queueForCounter puts the songID on a queue to trigger the counter lambdas
 func queueForCounter(songID *string) error {
 	// create message body
-	mb, _ := json.Marshal(messages.BeanCounterBody{SongID: *songID})
+	mb, _ := json.Marshal(types.BeanCounterBody{SongID: *songID})
 	input := &sqs.SendMessageInput{
 		DelaySeconds: aws.Int64(0),
 		MessageBody:  aws.String(string(mb)),
@@ -42,7 +39,7 @@ func queueForCounter(songID *string) error {
 	}
 
 	// send the message to the queue
-	message, err := queue.SendMessage(input)
+	message, err := clients.SQSClient.SendMessage(input)
 
 	if err != nil {
 		logger.Log.Error().Err(err).Str("songID", *songID).Msg("Unable to put the song onto the beanCounterQueue")
@@ -54,7 +51,7 @@ func queueForCounter(songID *string) error {
 }
 
 // queueForSelf puts the song information on the queue to re-trigger this lambda
-func queueForSelf(s *song.Song, nextUpdated *time.Time) error {
+func queueForSelf(s *types.Song, nextUpdated *time.Time) error {
 	// now
 	l, _ := time.LoadLocation(location)
 	now := time.Now().In(l).UTC().Unix()
@@ -70,7 +67,7 @@ func queueForSelf(s *song.Song, nextUpdated *time.Time) error {
 	}
 
 	// create message body
-	mb, _ := json.Marshal(messages.ChuneRefreshBody{SongID: s.SongID})
+	mb, _ := json.Marshal(types.ChuneRefreshBody{SongID: s.SongID})
 	input := &sqs.SendMessageInput{
 		DelaySeconds: &delaySeconds,
 		MessageBody:  aws.String(string(mb)),
@@ -78,7 +75,7 @@ func queueForSelf(s *song.Song, nextUpdated *time.Time) error {
 	}
 
 	// send the message to the queue
-	message, err := queue.SendMessage(input)
+	message, err := clients.SQSClient.SendMessage(input)
 
 	if err != nil {
 		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Unable to put the song onto the refreshQueue")
@@ -91,7 +88,7 @@ func queueForSelf(s *song.Song, nextUpdated *time.Time) error {
 }
 
 // lookupSpotify queries Spotify for a song to obtain info like its ID and album art etc
-func lookupSpotify(s *song.Song) error {
+func lookupSpotify(s *types.Song) error {
 	// authenticate to spotify
 	config := &clientcredentials.Config{
 		ClientID:     os.Getenv("SPOTIFY_CLIENT_ID"),
@@ -131,7 +128,7 @@ func lookupSpotify(s *song.Song) error {
 }
 
 // getNowPlaying queries JJJ to see what is getting played right now
-func getNowPlaying() (*song.Song, *time.Time) {
+func getNowPlaying() (*types.Song, *time.Time) {
 	logger.Log.Info().Msg("Checking JJJ for what's playing")
 
 	// query JJJ
@@ -184,7 +181,7 @@ func getNowPlaying() (*song.Song, *time.Time) {
 		artwork = response.Now.Release.Artwork[0].Sizes
 	}
 
-	return &song.Song{
+	return &types.Song{
 		Name:     title,
 		Album:    response.Now.Release.Title,
 		Artist:   response.Now.Release.Artists[0].Name,
@@ -195,7 +192,7 @@ func getNowPlaying() (*song.Song, *time.Time) {
 
 func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	// unmarshall sqsEvent to messageBody
-	mb := messages.ChuneRefreshBody{}
+	mb := types.ChuneRefreshBody{}
 	jsonErr := json.Unmarshal([]byte(sqsEvent.Records[0].Body), &mb)
 	if jsonErr != nil {
 		logger.Log.Error().Err(jsonErr).Msg("Unable to unmarshal sqsEvent body to messageBody struct")
@@ -208,7 +205,7 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	// if no song is playing just put the song back on the queue with the same ID
 	if jjjSong == nil {
 		logger.Log.Info().Str("songID", mb.SongID).Msg("Putting song back on queue with updated delay as no new song is playing yet")
-		_ = queueForSelf(&song.Song{SongID: mb.SongID}, nextUpdated)
+		_ = queueForSelf(&types.Song{SongID: mb.SongID}, nextUpdated)
 		return nil
 	}
 
@@ -216,7 +213,7 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 	spotifyLookupErr := lookupSpotify(jjjSong)
 	if spotifyLookupErr != nil {
 		logger.Log.Warn().Str("songID", mb.SongID).Msg("Putting song back on queue because we couldn't search for it on spotify")
-		_ = queueForSelf(&song.Song{SongID: mb.SongID}, nextUpdated)
+		_ = queueForSelf(&types.Song{SongID: mb.SongID}, nextUpdated)
 		return nil
 	}
 

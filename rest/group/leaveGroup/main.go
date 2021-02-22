@@ -1,7 +1,7 @@
 package main
 
 import (
-	"jjj.rflett.com/jjj-api/types/group"
+	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -15,7 +15,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	userID := request.PathParameters["userId"]
 
 	// leave
-	leaveStatus, leaveErr := group.Leave(userID, groupID)
+	u := types.User{UserID: userID}
+
+	leaveStatus, leaveErr := u.LeaveGroup(groupID)
 	if leaveErr != nil {
 		return events.APIGatewayProxyResponse{Body: leaveErr.Error(), StatusCode: leaveStatus}, nil
 	}

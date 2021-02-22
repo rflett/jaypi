@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"jjj.rflett.com/jjj-api/types/groupCode"
+	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 )
 
@@ -13,7 +13,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	groupID := request.PathParameters["groupId"]
 
 	// get group QR code
-	qr, err := groupCode.QR(groupID)
+	g := types.Group{GroupID: groupID}
+	qr, err := g.GetQRCode()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusInternalServerError}, nil
 	}
