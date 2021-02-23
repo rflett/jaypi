@@ -1,11 +1,14 @@
 package services
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/scrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
@@ -61,4 +64,39 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 		return g, err
 	}
 	return g, nil
+}
+
+// Hashes a password
+func HashPassword(password string, salt []byte) (string, error) {
+	hash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 64)
+
+	if err != nil {
+		logger.Log.Error().Msg(fmt.Sprintf("failed to hash a password: %v", err))
+		return "", err
+	}
+
+	return hex.EncodeToString(hash), nil
+}
+
+// Check whether a plaintext password matches a hashed one
+func PasswordsMatch(password string, salt string, hashedPassword string) bool {
+	hashedPassword, err := HashPassword(password, []byte(salt))
+
+	if err != nil {
+		// User can't do anything about this so log to the developer and generate a password that'll never be matched
+		logger.Log.Error().Msg(fmt.Sprintf("Failed to match a password: %v", err))
+		hashedPassword = uuid.NewString()
+	}
+
+	return hashedPassword == hashedPassword
+}
+
+func GetOauthProvider(provider string) {
+	provider, exists := oauthResponses.OauthProviders[providerName]
+
+	if !exists {
+		return nil, fmt.Errorf("Sorry. That auth provider isn't supported")
+	}
+
+	return provider, nil
 }

@@ -17,16 +17,20 @@ import (
 
 // User is a User of the application
 type User struct {
-	PK        string  `json:"-" dynamodbav:"PK"`
-	SK        string  `json:"-" dynamodbav:"SK"`
-	UserID    string  `json:"userID"`
-	FirstName string  `json:"firstName"`
-	LastName  string  `json:"lastName"`
-	NickName  string  `json:"nickName"`
-	Email     *string `json:"email"`
-	Points    int     `json:"points"`
-	CreatedAt string  `json:"createdAt"`
-	UpdatedAt *string `json:"updatedAt"`
+	PK             string  `json:"-" dynamodbav:"PK"`
+	SK             string  `json:"-" dynamodbav:"SK"`
+	UserID         string  `json:"userID"`
+	Name           string  `json:"name"`
+	NickName       string  `json:"nickName"`
+	Email          string  `json:"email"`
+	Points         int     `json:"points"`
+	CreatedAt      string  `json:"createdAt"`
+	Password       *string `json:"password"`
+	Salt           *string `json:"salt"`
+	AuthProvider   *string `json:"authProvider"`
+	AuthProviderId *string `json:"authProviderId"`
+	AvatarUrl      *string `json:"avatarUrl"`
+	UpdatedAt      *string `json:"updatedAt"`
 }
 
 // songVote is a votes in a users top 10

@@ -16,13 +16,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// requestBody is the expected body of the request
-type requestBody struct {
-	Name     string `json:"name"`
-	NickName string `json:"nickName"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
