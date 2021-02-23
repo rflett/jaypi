@@ -24,7 +24,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// state string is for csrf but can't really occur with modern oauth, but if required implement
 	stateStr := uuid.NewString()
 	headers := map[string]string{"Location": provider.AuthCodeURL(stateStr)}
-	return events.APIGatewayProxyResponse{Body: nil, StatusCode: http.StatusTemporaryRedirect, Headers: headers}, nil
+	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusTemporaryRedirect, Headers: headers}, nil
 }
 
 func main() {

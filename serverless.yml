@@ -107,6 +107,30 @@ functions:
             schema:
               application/json: ${file(schemas/user/update.json)}
 
+  # OAuth2
+  authenticate:
+    handler: source/bin/oauthAuthenticate
+    name: oauth-authenticate-${self:provider.stage}
+    description: "Retrieves a login URL for a chosen oauth provider"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: oauth/{provider}/login
+          method: get
+
+  # Not for us just for oauth providers to redirect to automatically
+  providerRedirect:
+    handler: source/bin/oauthProviderRedirect
+    name: oauth-redirect-${self:provider.stage}
+    description: "Provides a url for oauth providers to redirect to"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: oauth/{provider}/redirect
+          method: get
+
   # GROUPS
   createGroup:
     handler: source/bin/createGroup
@@ -183,7 +207,7 @@ functions:
           path: group/{groupId}/qr
           method: get
 
- # VOTES
+  # VOTES
   createVote:
     handler: source/bin/createVote
     name: create-vote-${self:provider.stage}
