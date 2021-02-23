@@ -91,8 +91,9 @@ func PasswordsMatch(password string, salt string, hashedPassword string) bool {
 	return hashedPassword == hashedPassword
 }
 
-func GetOauthProvider(provider string) {
-	provider, exists := oauthResponses.OauthProviders[providerName]
+// Retrieves an oauth provider by its string name
+func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
+	provider, exists := types.OauthProviders[providerName]
 
 	if !exists {
 		return nil, fmt.Errorf("Sorry. That auth provider isn't supported")

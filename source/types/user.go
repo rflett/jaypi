@@ -311,6 +311,61 @@ func (u *User) Get() (status int, error error) {
 	return http.StatusOK, nil
 }
 
+// Get the user from the table by their oauth id
+func (u *User) GetOauth() (status int, error error) {
+	// TODO change get query to search for users by their oauth provider ID instead
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+
+	// getItem
+	result, err := clients.DynamoClient.GetItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("userID", u.UserID).Msg("error getting user from table")
+			return responseStatus, aerr
+		} else {
+			logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting user from table")
+			return http.StatusInternalServerError, err
+		}
+	}
+
+	if len(result.Item) == 0 {
+		return http.StatusNotFound, nil
+	}
+
+	// unmarshal item into struct
+	err = dynamodbattribute.UnmarshalMap(result.Item, &u)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
+	}
+
+	return http.StatusOK, nil
+}
+
 // UpdatePoints adds the points to the users score
 func (u *User) UpdatePoints(points int) error {
 	input := &dynamodb.UpdateItemInput{
@@ -402,4 +457,10 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 
 	logger.Log.Info().Str("groupID", groupID).Str("userID", u.UserID).Msg("User left group")
 	return http.StatusNoContent, nil
+}
+
+// Check if there is a user that is already signed up with the details stored in the current user
+func (u User) AlreadySignedUp() bool {
+	// TODO actually check here probably. For now just let users sign up over and over
+	return false
 }

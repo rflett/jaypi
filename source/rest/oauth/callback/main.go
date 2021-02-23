@@ -1,80 +1,119 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/google/uuid"
-	"io"
+	"errors"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"io/ioutil"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
-
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
-
-// requestBody is the expected body of the request
-type requestBody struct {
-	Name     string `json:"name"`
-	NickName string `json:"nickName"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-
-	// unmarshall request body to requestBody struct
-	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	authCode := getAuthCode(request.PathParameters)
+	if authCode == "" {
+		return writeError(errors.New("MissingAuthCode"), "An authorisation code wasn't provided")
 	}
 
-	// TODO confirm user doesn't exist first
+	providerName := request.PathParameters["provider"]
+	provider, err := services.GetOauthProvider(providerName)
 
-	// Create user password
-	salt := generateSalt()
-	saltStr := hex.EncodeToString(salt)
-	hashedPassword, err := services.HashPassword(reqBody.Password, salt)
 	if err != nil {
-		logger.Log.Error().Err(err).Msg(fmt.Sprintf("Failed to create a user because a password hash failed"))
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return writeError(err, "Failed to retrieve an oauth provider by name")
 	}
 
-	// create
-	u := types.User{
-		Name:     reqBody.Name,
-		NickName: reqBody.NickName,
-		Email:    reqBody.Email,
-		Password: &hashedPassword,
-		Salt:     &saltStr,
+	// Retrieve an auth token from the single use code
+	userAuthToken, err := provider.Exchange(context.Background(), authCode)
+
+	if err != nil {
+		writeError(err, "Couldn't retrieve a token for the user")
 	}
-	createStatus, createErr := u.Create()
-	if createErr != nil {
-		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: createStatus}, nil
+
+	// We now have a token for the user, get their data
+	userClient := provider.Client(context.Background(), userAuthToken)
+	userEmailResp, _ := userClient.Get(provider.GetProfileRequestUrl(userAuthToken))
+
+	responseMap, err := getResponseContent(userEmailResp)
+	if err != nil {
+		return writeError(err, "Failed to retrieve response from oauth profile request")
+	}
+
+	// Convert from provider-specific into generic data
+	userInfo := provider.GetGenericResponseData(responseMap)
+
+	// Log the user in and receive a JWT
+	return registerOrLoginOauthUser(userInfo, providerName), nil
+}
+
+// Different providers return the code in a different format. Try them all
+func getAuthCode(params map[string]string) string {
+	authCode := params["code"]
+
+	if authCode == "" {
+		// Try access_token
+		authCode = params["access_token"]
+	}
+	return authCode
+}
+
+// Logs and returns an error message to the user
+func writeError(err error, msg string) (events.APIGatewayProxyResponse, error) {
+	logger.Log.Error().Err(err).Msg(msg)
+	return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+}
+
+// Reads the contents of the HTTP response and convert it into a map if possible
+func getResponseContent(response *http.Response) (map[string]interface{}, error) {
+	defer response.Body.Close()
+
+	responseBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	responseMap := make(map[string]interface{})
+	err = json.Unmarshal(responseBytes, &responseMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return responseMap, nil
+}
+
+// Checks if an oauth user is already in the database, if not register them.
+// Either way generate a JWT for the user that's specific to our application
+func registerOrLoginOauthUser(userInfo types.OauthResponse, providerName string) events.APIGatewayProxyResponse {
+
+	newUser := types.User{
+		Name:           userInfo.Name,
+		Email:          userInfo.Email,
+		AuthProvider:   &providerName,
+		AuthProviderId: &userInfo.Id,
+		AvatarUrl:      &userInfo.Picture,
+	}
+
+	var err error
+	var createStatus int
+	if newUser.AlreadySignedUp() {
+		// Log user in if the provider matches
+		createStatus, err = newUser.Create()
+	} else {
+		// Log user in if the provider matches
+		createStatus, err = newUser.Get()
+	}
+	if err != nil {
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: createStatus}
 	}
 
 	// response
-	responseBody, _ := json.Marshal(u)
+	responseBody, _ := json.Marshal(newUser)
 	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}, nil
-}
-
-// Generates a secure salt for the user
-func generateSalt() []byte {
-	saltBytes := make([]byte, 32)
-
-	_, err := io.ReadFull(rand.Reader, saltBytes)
-	if err != nil {
-		// Backup generation
-		saltBytes, _ = uuid.New().MarshalBinary()
-	}
-
-	return saltBytes
+	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}
 }
 
 func main() {
