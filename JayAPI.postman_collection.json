@@ -583,6 +583,30 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "OAuth",
+			"item": [
+				{
+					"name": "Authenticate",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/oauth/google/login",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"oauth",
+								"google",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"event": [
