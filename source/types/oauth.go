@@ -9,12 +9,23 @@ import (
 	"strconv"
 )
 
+const (
+	RedirectHost     = "http://localhost:8080"
+	GoogleClientID   = "771130202315-b17g52r80dlcja1qkffsralopnkd17be.apps.googleusercontent.com"
+	GoogleSecretID   = "iv2qRoPnYKuhKv-OBvtEr97t"
+	FacebookClientID = "5051487981591665"
+	FacebookSecretID = "71f680f2c46e360f13401e4a3a397564"
+	GithubClientID   = "fab65d432ef4b19d33c7"
+	GithubSecretID   = "4380b71c34e8b227f76c7107c3349067d33582b3"
+)
+
 type OauthResponse struct {
 	Id      string `json:"id"`
 	Email   string `json:"email"`
 	Name    string `json:"name"`
 	Picture string `json:"omitEmpty"`
 }
+
 type OauthProvider struct {
 	oauth2.Config
 	GetProfileRequestUrl   func(token *oauth2.Token) string
@@ -23,9 +34,9 @@ type OauthProvider struct {
 
 var GoogleOauth = OauthProvider{
 	Config: oauth2.Config{
-		ClientID:     "771130202315-b17g52r80dlcja1qkffsralopnkd17be.apps.googleusercontent.com",
-		ClientSecret: "iv2qRoPnYKuhKv-OBvtEr97t",
-		RedirectURL:  "http://localhost:8080/oauth/google/redirect",
+		ClientID:     GoogleClientID,
+		ClientSecret: GoogleSecretID,
+		RedirectURL:  fmt.Sprintf("%s/oauth/google/redirect", RedirectHost),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
@@ -42,9 +53,9 @@ var GoogleOauth = OauthProvider{
 
 var FacebookOauth = OauthProvider{
 	Config: oauth2.Config{
-		ClientID:     "5051487981591665",
-		ClientSecret: "71f680f2c46e360f13401e4a3a397564",
-		RedirectURL:  "http://localhost:8080/oauth/facebook/redirect",
+		ClientID:     FacebookClientID,
+		ClientSecret: FacebookSecretID,
+		RedirectURL:  fmt.Sprintf("%s/oauth/facebook/redirect", RedirectHost),
 		Scopes: []string{
 			"public_profile",
 			"email",
@@ -62,12 +73,11 @@ var FacebookOauth = OauthProvider{
 
 var GithubOauth = OauthProvider{
 	Config: oauth2.Config{
-		ClientID:     "fab65d432ef4b19d33c7",
-		ClientSecret: "4380b71c34e8b227f76c7107c3349067d33582b3",
-		RedirectURL:  "http://localhost:8080/oauth/github/redirect",
-		Scopes: []string{
-		},
-		Endpoint: github.Endpoint,
+		ClientID:     GithubClientID,
+		ClientSecret: GithubSecretID,
+		RedirectURL:  fmt.Sprintf("%s/oauth/github/redirect", RedirectHost),
+		Scopes:       []string{},
+		Endpoint:     github.Endpoint,
 	},
 	GetProfileRequestUrl: func(token *oauth2.Token) string {
 		return "https://api.github.com/user"

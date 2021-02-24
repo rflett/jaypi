@@ -460,7 +460,7 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 }
 
 // Check if there is a user that is already signed up with the details stored in the current user
-func (u User) AlreadySignedUp() bool {
+func (u *User) AlreadySignedUp() bool {
 	// TODO actually check here probably. For now just let users sign up over and over
 	return false
 }

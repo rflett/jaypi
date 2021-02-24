@@ -22,22 +22,19 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	providerName := request.PathParameters["provider"]
 	provider, err := services.GetOauthProvider(providerName)
-
 	if err != nil {
 		return writeError(err, "Failed to retrieve an oauth provider by name")
 	}
 
 	// Retrieve an auth token from the single use code
 	userAuthToken, err := provider.Exchange(context.Background(), authCode)
-
 	if err != nil {
-		writeError(err, "Couldn't retrieve a token for the user")
+		return writeError(err, "Couldn't retrieve a token for the user")
 	}
 
 	// We now have a token for the user, get their data
 	userClient := provider.Client(context.Background(), userAuthToken)
 	userEmailResp, _ := userClient.Get(provider.GetProfileRequestUrl(userAuthToken))
-
 	responseMap, err := getResponseContent(userEmailResp)
 	if err != nil {
 		return writeError(err, "Failed to retrieve response from oauth profile request")

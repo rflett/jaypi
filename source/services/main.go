@@ -66,7 +66,7 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 	return g, nil
 }
 
-// Hashes a password
+// HashPassword hashes a password with a salt
 func HashPassword(password string, salt []byte) (string, error) {
 	hash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 64)
 
@@ -78,7 +78,7 @@ func HashPassword(password string, salt []byte) (string, error) {
 	return hex.EncodeToString(hash), nil
 }
 
-// Check whether a plaintext password matches a hashed one
+// PasswordsMatch checks whether a plaintext password matches a hashed one
 func PasswordsMatch(password string, salt string, hashedPassword string) bool {
 	hashedPassword, err := HashPassword(password, []byte(salt))
 
@@ -91,12 +91,13 @@ func PasswordsMatch(password string, salt string, hashedPassword string) bool {
 	return hashedPassword == hashedPassword
 }
 
-// Retrieves an oauth provider by its string name
+// GetOauthProvider retrieves an oauth provider by its string name
 func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
 	provider, exists := types.OauthProviders[providerName]
 
 	if !exists {
-		return nil, fmt.Errorf("Sorry. That auth provider isn't supported")
+		logger.Log.Warn().Msg(fmt.Sprintf("Unhandled provider requested %s", providerName))
+		return nil, fmt.Errorf("Sorry. That auth provider isn't supported.")
 	}
 
 	return provider, nil
