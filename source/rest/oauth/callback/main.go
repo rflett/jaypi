@@ -15,11 +15,13 @@ import (
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// GetByUserID auth code
 	authCode := getAuthCode(request.PathParameters)
 	if authCode == "" {
 		return writeError(errors.New("MissingAuthCode"), "An authorisation code wasn't provided")
 	}
 
+	// GetByUserID provider
 	providerName := request.PathParameters["provider"]
 	provider, err := services.GetOauthProvider(providerName)
 	if err != nil {
@@ -85,7 +87,6 @@ func getResponseContent(response *http.Response) (map[string]interface{}, error)
 // Checks if an oauth user is already in the database, if not register them.
 // Either way generate a JWT for the user that's specific to our application
 func registerOrLoginOauthUser(userInfo types.OauthResponse, providerName string) events.APIGatewayProxyResponse {
-
 	newUser := types.User{
 		Name:           userInfo.Name,
 		Email:          userInfo.Email,
@@ -95,17 +96,28 @@ func registerOrLoginOauthUser(userInfo types.OauthResponse, providerName string)
 	}
 
 	var err error
-	var createStatus int
-	if newUser.AlreadySignedUp() {
-		// Log user in if the provider matches
-		createStatus, err = newUser.Create()
-	} else {
-		// Log user in if the provider matches
-		createStatus, err = newUser.Get()
+	var status int
+
+	exists, existsErr := newUser.Exists("AuthProviderId")
+	if existsErr != nil {
+		return events.APIGatewayProxyResponse{Body: existsErr.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	// create the user if they don't exist
+	if !exists {
+		status, err = newUser.Create()
 	}
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: createStatus}
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}
 	}
+
+	// get the user
+	status, err = newUser.GetByOauthProviderId()
+	if err != nil {
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}
+	}
+
+	// TODO generate JWT
 
 	// response
 	responseBody, _ := json.Marshal(newUser)

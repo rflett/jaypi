@@ -14,7 +14,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get user
 	u := types.User{UserID: userID}
-	status, err := u.Get()
+	status, err := u.GetByUserID()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
 	}

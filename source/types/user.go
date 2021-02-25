@@ -21,16 +21,25 @@ type User struct {
 	SK             string  `json:"-" dynamodbav:"SK"`
 	UserID         string  `json:"userID"`
 	Name           string  `json:"name"`
-	NickName       string  `json:"nickName"`
 	Email          string  `json:"email"`
 	Points         int     `json:"points"`
 	CreatedAt      string  `json:"createdAt"`
+	NickName       *string `json:"nickName"`
 	Password       *string `json:"password"`
 	Salt           *string `json:"salt"`
 	AuthProvider   *string `json:"authProvider"`
 	AuthProviderId *string `json:"authProviderId"`
 	AvatarUrl      *string `json:"avatarUrl"`
 	UpdatedAt      *string `json:"updatedAt"`
+}
+
+// userAuthProvider represents a user and their AuthProviderId
+type userAuthProvider struct {
+	PK             string `json:"-" dynamodbav:"PK"`
+	SK             string `json:"-" dynamodbav:"SK"`
+	UserID         string `json:"userID"`
+	AuthProviderId string `json:"authProviderId"`
+	AuthProvider   string `json:"authProvider"`
 }
 
 // songVote is a votes in a users top 10
@@ -121,7 +130,7 @@ func (u *User) Update() (status int, error error) {
 			":pk": &pk,
 			":sk": &sk,
 			":nn": {
-				S: aws.String(u.NickName),
+				S: aws.String(*u.NickName),
 			},
 			":ua": {
 				S: aws.String(*u.UpdatedAt),
@@ -256,8 +265,8 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 	return http.StatusNoContent, nil
 }
 
-// Get the user from the table
-func (u *User) Get() (status int, error error) {
+// GetByUserID the user from the table
+func (u *User) GetByUserID() (status int, error error) {
 	// get query
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -311,59 +320,107 @@ func (u *User) Get() (status int, error error) {
 	return http.StatusOK, nil
 }
 
-// Get the user from the table by their oauth id
-func (u *User) GetOauth() (status int, error error) {
-	// TODO change get query to search for users by their oauth provider ID instead
-	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-			},
-		},
-		TableName: &clients.DynamoTable,
+// Exists checks to see if a user exists. You can lookup via UserID or AuthProviderId.
+func (u *User) Exists(lookup string) (bool, error) {
+	var pk, sk *dynamodb.AttributeValue
+	var kce string
+
+	input := &dynamodb.QueryInput{
+		ProjectionExpression:      aws.String("userID"),
+		TableName:                 &clients.DynamoTable,
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{":pk": pk, ":sk": sk},
+		KeyConditionExpression:    aws.String(kce),
 	}
 
-	// getItem
-	result, err := clients.DynamoClient.GetItem(input)
+	switch lookup {
+	case "UserID":
+		pk = &dynamodb.AttributeValue{
+			S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+		}
+		sk = &dynamodb.AttributeValue{
+			S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
+		}
+	case "AuthProviderId":
+		pk = &dynamodb.AttributeValue{
+			S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
+		}
+		sk = &dynamodb.AttributeValue{
+			S: aws.String(fmt.Sprintf("%s#%s", UserAuthProviderSortKey, *u.AuthProviderId)),
+		}
+		input.IndexName = aws.String(GSI)
+	default:
+		return false, errors.New("unsupported lookup, must be one of UserID, AuthProviderId")
+	}
+
+	// query
+	result, err := clients.DynamoClient.Query(input)
 
 	// handle errors
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
 			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
 			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
+				return false, nil
 			}
-			logger.Log.Error().Err(aerr).Str("userID", u.UserID).Msg("error getting user from table")
-			return responseStatus, aerr
+			logger.Log.Error().Err(err).Str("lookup", lookup).Msg("Error checking if user exists in table")
+			return false, err
 		} else {
-			logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting user from table")
-			return http.StatusInternalServerError, err
+			logger.Log.Error().Err(err).Str("lookup", lookup).Msg("Error checking if user exists in table")
+			return false, err
 		}
 	}
 
-	if len(result.Item) == 0 {
+	// user doesn't exist
+	if len(result.Items) == 0 {
+		logger.Log.Info().Str("lookup", lookup).Msg("User does not exist in table")
+		return false, nil
+	}
+
+	// user exists
+	logger.Log.Info().Str("lookup", lookup).Msg("User already exists in table")
+	return true, nil
+}
+
+// GetByUserID the user from the table by their oauth id
+func (u *User) GetByOauthProviderId() (status int, error error) {
+	// input
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserAuthProviderSortKey, u.AuthProviderId)),
+			},
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
+			},
+		},
+		IndexName:              aws.String(GSI),
+		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		ProjectionExpression:   aws.String("userID"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	// query
+	result, err := clients.DynamoClient.Query(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("providerID", *u.AuthProviderId).Msg("error querying by auth provider ID")
+		return http.StatusInternalServerError, err
+	}
+
+	if len(result.Items) == 0 {
 		return http.StatusNotFound, nil
 	}
 
-	// unmarshal item into struct
-	err = dynamodbattribute.UnmarshalMap(result.Item, &u)
+	// unmarshal item into user
+	err = dynamodbattribute.UnmarshalMap(result.Items[0], &u)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
 	}
 
-	return http.StatusOK, nil
+	// fill the user out
+	getUserStatus, _ := u.GetByUserID()
+	return getUserStatus, nil
 }
 
 // UpdatePoints adds the points to the users score

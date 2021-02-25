@@ -48,8 +48,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// create
 	u := types.User{
 		Name:     reqBody.Name,
-		NickName: reqBody.NickName,
 		Email:    reqBody.Email,
+		NickName: &reqBody.NickName,
 		Password: &hashedPassword,
 		Salt:     &saltStr,
 	}
