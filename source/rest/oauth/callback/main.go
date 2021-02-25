@@ -16,7 +16,7 @@ import (
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// GetByUserID auth code
-	authCode := getAuthCode(request.PathParameters)
+	authCode := getAuthCode(request.QueryStringParameters)
 	if authCode == "" {
 		return writeError(errors.New("MissingAuthCode"), "An authorisation code wasn't provided")
 	}

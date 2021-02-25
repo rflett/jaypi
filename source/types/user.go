@@ -25,8 +25,8 @@ type User struct {
 	Points         int     `json:"points"`
 	CreatedAt      string  `json:"createdAt"`
 	NickName       *string `json:"nickName"`
-	Password       *string `json:"password"`
-	Salt           *string `json:"salt"`
+	Password       *string `json:"-" dynamodbav:"password"`
+	Salt           *string `json:"-" dynamodbav:"salt"`
 	AuthProvider   *string `json:"authProvider"`
 	AuthProviderId *string `json:"authProviderId"`
 	AvatarUrl      *string `json:"avatarUrl"`

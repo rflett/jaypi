@@ -30,7 +30,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// update
 	u := types.User{
 		UserID:   userID,
-		NickName: reqBody.NickName,
+		NickName: &reqBody.NickName,
 	}
 	updateStatus, updateErr := u.Update()
 	if updateErr != nil {
