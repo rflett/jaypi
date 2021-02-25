@@ -102,8 +102,15 @@ func (u *User) Create() (status int, error error) {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Error adding user to table")
 		return http.StatusInternalServerError, err
 	}
-
 	logger.Log.Info().Str("userID", u.UserID).Msg("Successfully added user to table")
+
+	// create their auth provider
+	authProviderErr := u.NewAuthProvider()
+	if authProviderErr != nil {
+		return http.StatusInternalServerError, authProviderErr
+	}
+
+	// ok!
 	return http.StatusCreated, nil
 }
 
@@ -324,13 +331,7 @@ func (u *User) GetByUserID() (status int, error error) {
 func (u *User) Exists(lookup string) (bool, error) {
 	var pk, sk *dynamodb.AttributeValue
 	var kce string
-
-	input := &dynamodb.QueryInput{
-		ProjectionExpression:      aws.String("userID"),
-		TableName:                 &clients.DynamoTable,
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{":pk": pk, ":sk": sk},
-		KeyConditionExpression:    aws.String(kce),
-	}
+	var idx *string
 
 	switch lookup {
 	case "UserID":
@@ -340,16 +341,28 @@ func (u *User) Exists(lookup string) (bool, error) {
 		sk = &dynamodb.AttributeValue{
 			S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
 		}
+		kce = "PK = :pk and SK = :sk"
+		idx = nil
 	case "AuthProviderId":
 		pk = &dynamodb.AttributeValue{
 			S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
 		}
 		sk = &dynamodb.AttributeValue{
-			S: aws.String(fmt.Sprintf("%s#%s", UserAuthProviderSortKey, *u.AuthProviderId)),
+			S: aws.String(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
 		}
-		input.IndexName = aws.String(GSI)
+		idx = aws.String(GSI)
+		kce = "SK = :sk and begins_with(PK, :pk)"
 	default:
 		return false, errors.New("unsupported lookup, must be one of UserID, AuthProviderId")
+	}
+
+	// create input
+	input := &dynamodb.QueryInput{
+		ProjectionExpression:      aws.String("userID"),
+		TableName:                 &clients.DynamoTable,
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{":pk": pk, ":sk": sk},
+		KeyConditionExpression:    aws.String(kce),
+		IndexName:                 idx,
 	}
 
 	// query
@@ -387,7 +400,7 @@ func (u *User) GetByOauthProviderId() (status int, error error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserAuthProviderSortKey, u.AuthProviderId)),
+				S: aws.String(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
 			},
 			":pk": {
 				S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
@@ -421,6 +434,36 @@ func (u *User) GetByOauthProviderId() (status int, error error) {
 	// fill the user out
 	getUserStatus, _ := u.GetByUserID()
 	return getUserStatus, nil
+}
+
+// NewAuthProvider creates a new mapping of a user to their auth provider
+func (u *User) NewAuthProvider() error {
+	uap := userAuthProvider{
+		PK:             fmt.Sprintf("%s#%s", UserAuthProviderPrimaryKey, u.UserID),
+		SK:             fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId),
+		UserID:         u.UserID,
+		AuthProviderId: *u.AuthProviderId,
+		AuthProvider:   *u.AuthProvider,
+	}
+
+	// add the user auth provider to the table
+	av, _ := dynamodbattribute.MarshalMap(uap)
+	input := &dynamodb.PutItemInput{
+		TableName:    &clients.DynamoTable,
+		Item:         av,
+		ReturnValues: aws.String("NONE"),
+	}
+	_, err := clients.DynamoClient.PutItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Error adding user auth provider to table")
+		return err
+	}
+
+	// success
+	logger.Log.Info().Str("userID", u.UserID).Str("provider", *u.AuthProvider).Msg("Successfully user auth provider to table")
+	return nil
 }
 
 // UpdatePoints adds the points to the users score
@@ -514,10 +557,4 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 
 	logger.Log.Info().Str("groupID", groupID).Str("userID", u.UserID).Msg("User left group")
 	return http.StatusNoContent, nil
-}
-
-// Check if there is a user that is already signed up with the details stored in the current user
-func (u *User) AlreadySignedUp() bool {
-	// TODO actually check here probably. For now just let users sign up over and over
-	return false
 }

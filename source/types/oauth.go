@@ -36,7 +36,7 @@ var GoogleOauth = OauthProvider{
 	Config: oauth2.Config{
 		ClientID:     GoogleClientID,
 		ClientSecret: GoogleSecretID,
-		RedirectURL:  fmt.Sprintf("%s/oauth/google/redirect", RedirectHost),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", RedirectHost, AuthProviderGoogle),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
@@ -55,7 +55,7 @@ var FacebookOauth = OauthProvider{
 	Config: oauth2.Config{
 		ClientID:     FacebookClientID,
 		ClientSecret: FacebookSecretID,
-		RedirectURL:  fmt.Sprintf("%s/oauth/facebook/redirect", RedirectHost),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", RedirectHost, AuthProviderFacebook),
 		Scopes: []string{
 			"public_profile",
 			"email",
@@ -75,7 +75,7 @@ var GithubOauth = OauthProvider{
 	Config: oauth2.Config{
 		ClientID:     GithubClientID,
 		ClientSecret: GithubSecretID,
-		RedirectURL:  fmt.Sprintf("%s/oauth/github/redirect", RedirectHost),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", RedirectHost, AuthProviderGitHub),
 		Scopes:       []string{},
 		Endpoint:     github.Endpoint,
 	},
@@ -88,9 +88,9 @@ var GithubOauth = OauthProvider{
 }
 
 var OauthProviders = map[string]*OauthProvider{
-	"google":   &GoogleOauth,
-	"github":   &GithubOauth,
-	"facebook": &FacebookOauth,
+	AuthProviderGoogle:   &GoogleOauth,
+	AuthProviderGitHub:   &GithubOauth,
+	AuthProviderFacebook: &FacebookOauth,
 }
 
 func githubResponseToGeneric(response map[string]interface{}) OauthResponse {

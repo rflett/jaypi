@@ -97,7 +97,7 @@ func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
 
 	if !exists {
 		logger.Log.Warn().Msg(fmt.Sprintf("Unhandled provider requested %s", providerName))
-		return nil, fmt.Errorf("Sorry. That auth provider isn't supported.")
+		return nil, fmt.Errorf("Sorry. That oauth provider isn't supported.")
 	}
 
 	return provider, nil

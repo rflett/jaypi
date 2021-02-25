@@ -4,16 +4,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/google/uuid"
 	"io"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
-
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 // requestBody is the expected body of the request
@@ -34,7 +35,24 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
-	// TODO confirm user doesn't exist first
+	// create the user with the internal provider
+	u := types.User{
+		Name:           reqBody.Name,
+		Email:          reqBody.Email,
+		NickName:       &reqBody.NickName,
+		AuthProvider:   aws.String(types.AuthProviderInternal),
+		AuthProviderId: &reqBody.Email,
+	}
+
+	// confirm user doesn't exist first
+	exists, existsErr := u.Exists("AuthProviderId")
+	if existsErr != nil {
+		return events.APIGatewayProxyResponse{Body: existsErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	}
+
+	if exists {
+		return events.APIGatewayProxyResponse{Body: errors.New("user already exists").Error(), StatusCode: http.StatusBadRequest}, nil
+	}
 
 	// Create user password
 	salt := generateSalt()
@@ -44,15 +62,10 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		logger.Log.Error().Err(err).Msg(fmt.Sprintf("Failed to create a user because a password hash failed"))
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
+	u.Password = &hashedPassword
+	u.Salt = &saltStr
 
-	// create
-	u := types.User{
-		Name:     reqBody.Name,
-		Email:    reqBody.Email,
-		NickName: &reqBody.NickName,
-		Password: &hashedPassword,
-		Salt:     &saltStr,
-	}
+	// create the user
 	createStatus, createErr := u.Create()
 	if createErr != nil {
 		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: createStatus}, nil
@@ -64,7 +77,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}, nil
 }
 
-// Generates a secure salt for the user
+// generateSalt creates a secure salt for the user
 func generateSalt() []byte {
 	saltBytes := make([]byte, 32)
 

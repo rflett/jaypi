@@ -14,6 +14,10 @@ const (
 	PlayCountPrimaryKey        = "PLAYCOUNT"
 	PlayCountSortKey           = "CURRENT"
 	GSI                        = "GSI1"
+	AuthProviderGoogle         = "google"
+	AuthProviderGitHub         = "github"
+	AuthProviderFacebook       = "facebook"
+	AuthProviderInternal       = "delegator"
 )
 
 type PlayCount struct {
