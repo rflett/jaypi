@@ -23,3 +23,4 @@ go build -ldflags="-s -w" -o bin/oauthProviderRedirect rest/oauth/callback/main.
 go build -ldflags="-s -w" -o bin/chuneMachine lambda/chune-machine/main.go
 go build -ldflags="-s -w" -o bin/beanCounter lambda/bean-counter/main.go
 go build -ldflags="-s -w" -o bin/scoreTaker lambda/score-taker/main.go
+go build -ldflags="-s -w" -o bin/authorizer lambda/authorizer/main.go

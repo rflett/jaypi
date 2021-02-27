@@ -6,15 +6,19 @@ provider:
   runtime: go1.x
   region: ap-southeast-2
   stage: ${opt:staging, 'dev'}
-  role: arn:aws:iam::292374005836:role/lambda-jaypi
+  useDotenv: true
+  lambdaHashingVersion: 20201221
+  iam:
+    role: arn:aws:iam::292374005836:role/lambda-jaypi
+  #  apiGateway:
+  #    shouldStartNameWithService: true
   environment:
     JAYPI_TABLE: jaypi
 
 package:
+  individually: true
   exclude:
     - ./**
-  include:
-    - ./source/bin/**
 
 functions:
 
@@ -26,6 +30,9 @@ functions:
     memorySize: 128
     timeout: 20
     reservedConcurrency: 1
+    package:
+      include:
+        - ./source/bin/chuneMachine
     environment:
       SPOTIFY_CLIENT_ID: e2d95c4b73d24663b22c220e3c78bb0e
       SPOTIFY_SECRET_ID: 079699d33ca94e37a92f457f71fec846
@@ -45,6 +52,9 @@ functions:
     memorySize: 128
     timeout: 20
     reservedConcurrency: 1
+    package:
+      include:
+        - ./source/bin/beanCounter
     environment:
       SCORER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/scorer-${self:provider.stage}
     events:
@@ -61,6 +71,9 @@ functions:
     memorySize: 128
     timeout: 20
     reservedConcurrency: 100
+    package:
+      include:
+        - ./source/bin/scoreTaker
     events:
       - sqs:
           arn: arn:aws:sqs:ap-southeast-2:292374005836:scorer-${self:provider.stage}
@@ -68,12 +81,25 @@ functions:
           enabled: true
 
   # Account
+  authorizer:
+    handler: source/bin/authorizer
+    name: ${self:service}-authorizer-${self:provider.stage}
+    description: "Authorizes incoming APIGW requests and verifies the token"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/authorizer
+
   signup:
     handler: source/bin/signup
     name: account-signup-${self:provider.stage}
     description: "Signup with email and password"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/signup
     events:
       - http:
           path: account/signup
@@ -88,6 +114,9 @@ functions:
     description: "Sign in with email and password"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/signin
     events:
       - http:
           path: account/signin
@@ -102,6 +131,9 @@ functions:
     description: "Retrieves a login URL for a chosen oauth provider"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/oauthAuthenticate
     events:
       - http:
           path: oauth/{provider}/login
@@ -113,6 +145,9 @@ functions:
     description: "Provides a url for oauth providers to redirect to"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/oauthProviderRedirect
     events:
       - http:
           path: oauth/{provider}/redirect
@@ -125,10 +160,18 @@ functions:
     description: "Get a user"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/getUser
     events:
       - http:
           path: user/{userId}
           method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   updateUser:
     handler: source/bin/updateUser
@@ -136,6 +179,9 @@ functions:
     description: "Update a user"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/updateUser
     events:
       - http:
           path: user/{userId}
@@ -150,6 +196,9 @@ functions:
     description: "Creates a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/createGroup
     events:
       - http:
           path: group
@@ -164,6 +213,9 @@ functions:
     description: "Get a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/getGroup
     events:
       - http:
           path: group/{groupId}
@@ -175,6 +227,9 @@ functions:
     description: "Update a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/updateGroup
     events:
       - http:
           path: group/{groupId}
@@ -189,6 +244,9 @@ functions:
     description: "Join a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/joinGroup
     events:
       - http:
           path: group/join
@@ -203,6 +261,9 @@ functions:
     description: "Leave a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/leaveGroup
     events:
       - http:
           path: group/{groupId}/user/{userId}
@@ -214,6 +275,9 @@ functions:
     description: "Get the QR invite for a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/getGroupQR
     events:
       - http:
           path: group/{groupId}/qr
@@ -226,6 +290,9 @@ functions:
     description: "Create a vote"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/createVote
     events:
       - http:
           path: user/{userId}/vote
@@ -240,6 +307,9 @@ functions:
     description: "Delete a vote"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/deleteVote
     events:
       - http:
           path: user/{userId}/vote/{songId}

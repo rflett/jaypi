@@ -52,7 +52,7 @@ type songVote struct {
 	Position int    `json:"position"`
 }
 
-type userClaims struct {
+type UserClaims struct {
 	Name           string  `json:"name"`
 	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
 	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
@@ -572,7 +572,7 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 func (u *User) CreateToken() (string, error) {
 	// create the token
 	token := jwt.New(jwt.GetSigningMethod("RS256"))
-	token.Claims = &userClaims{
+	token.Claims = &UserClaims{
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    "delegator.com.au",
 			Subject:   u.UserID,
