@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"jjj.rflett.com/jjj-api/clients"
@@ -569,7 +570,9 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 
 // CreateToken returns a new CreateToken for the user
 func (u *User) CreateToken() (string, error) {
-	c := userClaims{
+	// create the token
+	token := jwt.New(jwt.GetSigningMethod("RS256"))
+	token.Claims = &userClaims{
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    "delegator.com.au",
 			Subject:   u.UserID,
@@ -584,11 +587,20 @@ func (u *User) CreateToken() (string, error) {
 		AuthProvider:   *u.AuthProvider,
 		AuthProviderId: *u.AuthProviderId,
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
-	tokenStr, err := token.SignedString([]byte("foo"))
+
+	// get the signing key
+	input := &secretsmanager.GetSecretValueInput{SecretId: &clients.JWTSigningSecret}
+	secret, err := clients.SecretsClient.GetSecretValue(input)
 	if err != nil {
-		logger.Log.Error().Err(err).Msg("Unable to sign CreateToken")
+		logger.Log.Error().Err(err).Msg("unable to get signing key from secretsmanager")
 		return "", err
 	}
-	return tokenStr, nil
+
+	// parse the key, sign the token and return it
+	key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(*secret.SecretString))
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("unable to parse signing private key")
+		return "", err
+	}
+	return token.SignedString(key)
 }

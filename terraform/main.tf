@@ -1,3 +1,7 @@
+data "aws_secretsmanager_secret" "jwt_signing_key" {
+  name = "jjj-api-private-signing-key"
+}
+
 resource "aws_dynamodb_table" "jaypi" {
   name           = "jaypi"
   billing_mode   = "PROVISIONED"
@@ -60,14 +64,16 @@ resource "aws_iam_role_policy" "jaypi" {
           "sqs:SendMessageBatch",
           "sqs:DeleteMessage",
           "sqs:ReceiveMessage",
-          "sqs:GetQueueAttributes"
+          "sqs:GetQueueAttributes",
+          "secretsmanager:GetSecretValue"
         ],
         Resource = [
           aws_sqs_queue.chune_refresh.arn,
           aws_sqs_queue.bean_counter.arn,
           aws_sqs_queue.scorer.arn,
           aws_dynamodb_table.jaypi.arn,
-          "${aws_dynamodb_table.jaypi.arn}/*"
+          "${aws_dynamodb_table.jaypi.arn}/*",
+          data.aws_secretsmanager_secret.jwt_signing_key.arn,
         ]
       },
       {
