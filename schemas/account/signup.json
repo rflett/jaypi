@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "JayPI",
+  "type": "object",
+  "properties": {
+    "name":      { "type": "string" },
+    "nickName":  { "type": "string" },
+    "email":     { "type": "string" },
+    "password":  { "type": "string" }
+  },
+  "required": ["name", "email", "nickName", "password"]
+}

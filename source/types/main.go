@@ -36,3 +36,9 @@ type ScoreTakerBody struct {
 	Points int    `json:"points"`
 	UserID string `json:"userID"`
 }
+
+type LoginResponse struct {
+	User      User   `json:"user"`
+	Token     string `json:"token"`
+	TokenType string `json:"tokenType"`
+}

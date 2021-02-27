@@ -1,0 +1,6 @@
+{
+  "resource": "/",
+  "path": "/account/signin",
+  "httpMethod": "POST",
+  "body": "{\"email\": \"pw1@gmail.com\", \"password\": \"ryanflett\"}"
+}

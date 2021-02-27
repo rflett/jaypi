@@ -1,6 +1,0 @@
-{
-  "resource": "/",
-  "path": "/user",
-  "httpMethod": "POST",
-  "body": "{\"name\": \"Ryan Flett\", \"nickName\": \"fletty\", \"email\": \"ryan.flett1@gmail.com\", \"password\": \"superSecretPassword1\",}"
-}

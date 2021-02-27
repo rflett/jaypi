@@ -1,14 +1,12 @@
 package services
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
@@ -66,29 +64,24 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 	return g, nil
 }
 
-// HashPassword hashes a password with a salt
-func HashPassword(password string, salt []byte) (string, error) {
-	hash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 64)
-
+// HashAndSaltPassword generates a salt and hashes a password with it using bcrypt
+func HashAndSaltPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		logger.Log.Error().Msg(fmt.Sprintf("failed to hash a password: %v", err))
+		logger.Log.Error().Err(err).Msg("Unable to generate hashed password")
 		return "", err
 	}
-
-	return hex.EncodeToString(hash), nil
+	return string(hashed), nil
 }
 
-// PasswordsMatch checks whether a plaintext password matches a hashed one
-func PasswordsMatch(password string, salt string, hashedPassword string) bool {
-	hashedPassword, err := HashPassword(password, []byte(salt))
-
+// ComparePasswords compares a hashed password with a plain text one and sees if they match
+func ComparePasswords(hashedPassword string, textPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(textPassword))
 	if err != nil {
-		// User can't do anything about this so log to the developer and generate a password that'll never be matched
-		logger.Log.Error().Msg(fmt.Sprintf("Failed to match a password: %v", err))
-		hashedPassword = uuid.NewString()
+		logger.Log.Error().Err(err).Msg("Unable to compare passwords")
+		return false
 	}
-
-	return hashedPassword == hashedPassword
+	return true
 }
 
 // GetOauthProvider retrieves an oauth provider by its string name

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,7 +26,6 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
 	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
@@ -35,8 +33,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
-	// create the user with the internal provider
-	u := types.User{
+	newUser := types.User{
 		Name:           reqBody.Name,
 		Email:          reqBody.Email,
 		NickName:       &reqBody.NickName,
@@ -45,7 +42,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// confirm user doesn't exist first
-	exists, existsErr := u.Exists("AuthProviderId")
+	exists, existsErr := newUser.Exists("AuthProviderId")
 	if existsErr != nil {
 		return events.APIGatewayProxyResponse{Body: existsErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
@@ -55,26 +52,34 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// Create user password
-	salt := generateSalt()
-	saltStr := hex.EncodeToString(salt)
-	hashedPassword, err := services.HashPassword(reqBody.Password, salt)
+	password, err := services.HashAndSaltPassword(reqBody.Password)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg(fmt.Sprintf("Failed to create a user because a password hash failed"))
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
-	u.Password = &hashedPassword
-	u.Salt = &saltStr
+	newUser.Password = &password
 
 	// create the user
-	createStatus, createErr := u.Create()
+	createStatus, createErr := newUser.Create()
 	if createErr != nil {
 		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: createStatus}, nil
 	}
 
+	// create token
+	token, tokenErr := newUser.CreateToken()
+	if tokenErr != nil {
+		return events.APIGatewayProxyResponse{Body: tokenErr.Error(), StatusCode: http.StatusInternalServerError}, nil
+	}
+
 	// response
-	responseBody, _ := json.Marshal(u)
+	loginResponse := types.LoginResponse{
+		User:      newUser,
+		Token:     token,
+		TokenType: "Bearer",
+	}
+	body, _ := json.Marshal(loginResponse)
 	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}, nil
+	return events.APIGatewayProxyResponse{Body: string(body), StatusCode: http.StatusCreated, Headers: headers}, nil
 }
 
 // generateSalt creates a secure salt for the user

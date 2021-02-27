@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -26,7 +27,6 @@ type User struct {
 	CreatedAt      string  `json:"createdAt"`
 	NickName       *string `json:"nickName"`
 	Password       *string `json:"-" dynamodbav:"password"`
-	Salt           *string `json:"-" dynamodbav:"salt"`
 	AuthProvider   *string `json:"authProvider"`
 	AuthProviderId *string `json:"authProviderId"`
 	AvatarUrl      *string `json:"avatarUrl"`
@@ -49,6 +49,14 @@ type songVote struct {
 	SongID   string `json:"songID"`
 	UserID   string `json:"userID"`
 	Position int    `json:"position"`
+}
+
+type userClaims struct {
+	Name           string  `json:"name"`
+	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
+	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
+	Picture        *string `json:"picture"`
+	jwt.StandardClaims
 }
 
 // voteCount returns the number of votes a user already has
@@ -395,7 +403,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 }
 
 // GetByUserID the user from the table by their oauth id
-func (u *User) GetByOauthProviderId() (status int, error error) {
+func (u *User) GetByAuthProviderId() (status int, error error) {
 	// input
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -557,4 +565,30 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 
 	logger.Log.Info().Str("groupID", groupID).Str("userID", u.UserID).Msg("User left group")
 	return http.StatusNoContent, nil
+}
+
+// CreateToken returns a new CreateToken for the user
+func (u *User) CreateToken() (string, error) {
+	c := userClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer:    "delegator.com.au",
+			Subject:   u.UserID,
+			Audience:  "delegator.com.au",
+			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+			NotBefore: time.Now().Unix(),
+			IssuedAt:  time.Now().Unix(),
+			Id:        uuid.NewString(),
+		},
+		Name:           u.Name,
+		Picture:        u.AvatarUrl,
+		AuthProvider:   *u.AuthProvider,
+		AuthProviderId: *u.AuthProviderId,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
+	tokenStr, err := token.SignedString([]byte("foo"))
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to sign CreateToken")
+		return "", err
+	}
+	return tokenStr, nil
 }

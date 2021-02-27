@@ -112,17 +112,26 @@ func registerOrLoginOauthUser(userInfo types.OauthResponse, providerName string)
 	}
 
 	// get the user
-	status, err = newUser.GetByOauthProviderId()
+	status, err = newUser.GetByAuthProviderId()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}
 	}
 
-	// TODO generate JWT
+	// create token
+	token, tokenErr := newUser.CreateToken()
+	if tokenErr != nil {
+		return events.APIGatewayProxyResponse{Body: tokenErr.Error(), StatusCode: http.StatusInternalServerError}
+	}
 
 	// response
-	responseBody, _ := json.Marshal(newUser)
+	loginResponse := types.LoginResponse{
+		User:      newUser,
+		Token:     token,
+		TokenType: "Bearer",
+	}
+	body, _ := json.Marshal(loginResponse)
 	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}
+	return events.APIGatewayProxyResponse{Body: string(body), StatusCode: http.StatusCreated, Headers: headers}
 }
 
 func main() {

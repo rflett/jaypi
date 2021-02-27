@@ -67,21 +67,58 @@ functions:
           batchSize: 1
           enabled: true
 
-  # USERS
-  createUser:
-    handler: source/bin/createUser
-    name: create-user-${self:provider.stage}
-    description: "Create a user"
+  # Account
+  signup:
+    handler: source/bin/signup
+    name: account-signup-${self:provider.stage}
+    description: "Signup with email and password"
     memorySize: 128
     timeout: 10
     events:
       - http:
-          path: user
+          path: account/signup
           method: post
           request:
             schema:
-              application/json: ${file(schemas/user/create.json)}
+              application/json: ${file(schemas/account/signup.json)}
 
+  signin:
+    handler: source/bin/signin
+    name: account-signin-${self:provider.stage}
+    description: "Sign in with email and password"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: account/signin
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/account/signin.json)}
+
+  authenticate:
+    handler: source/bin/oauthAuthenticate
+    name: oauth-authenticate-${self:provider.stage}
+    description: "Retrieves a login URL for a chosen oauth provider"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: oauth/{provider}/login
+          method: get
+
+  providerRedirect:
+    handler: source/bin/oauthProviderRedirect
+    name: oauth-redirect-${self:provider.stage}
+    description: "Provides a url for oauth providers to redirect to"
+    memorySize: 128
+    timeout: 10
+    events:
+      - http:
+          path: oauth/{provider}/redirect
+          method: get
+
+  # USERS
   getUser:
     handler: source/bin/getUser
     name: get-user-${self:provider.stage}
@@ -106,31 +143,6 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/user/update.json)}
-
-  # OAuth2
-  authenticate:
-    handler: source/bin/oauthAuthenticate
-    name: oauth-authenticate-${self:provider.stage}
-    description: "Retrieves a login URL for a chosen oauth provider"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: oauth/{provider}/login
-          method: get
-
-  # Not for us just for oauth providers to redirect to automatically
-  providerRedirect:
-    handler: source/bin/oauthProviderRedirect
-    name: oauth-redirect-${self:provider.stage}
-    description: "Provides a url for oauth providers to redirect to"
-    memorySize: 128
-    timeout: 10
-    events:
-      - http:
-          path: oauth/{provider}/redirect
-          method: get
-
   # GROUPS
   createGroup:
     handler: source/bin/createGroup
