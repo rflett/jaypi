@@ -15,10 +15,9 @@ package main
 
 import (
 	"context"
-	"crypto"
 	"encoding/base64"
 	"errors"
-	"fmt"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/dgrijalva/jwt-go"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
@@ -29,34 +28,19 @@ import (
 
 const EncodedVerifyKey = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0NCk1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NB\nUThBTUlJQkNnS0NBUUVBclBpRHdmZFM3VGcrNW85SmpzMzQNCnRRbG5qUlJEa2xMSUgvTnZaTW1X\nREQ0WU9HckJUT0pUcTBxbXZoVW43UHczRzRrUkJxRENobTZzZUV4YTlpVWMNCndWaC93R3BzZWRi\nS2xDR2JKaGZKTldBTXkwUHVnQUdHMW9tengzWGg0eGc5WWIvL29VUnlnZ3NORDJVOVlOenoNCkg4\nQUJDZjd2TDJyYzBzcDQ5UXFQR1pXczhTMW95OGtzdE1uSkZCamhtbVFSQm9wVzU2ZWM1bDVJSGtr\nQ3VOOWgNCjY5dElPY2xUOFIxc25BZWZQUm54VS9mUHNJOE81M3M1TE56MmdoTlF6VU9qQnBqTDd2\nUEJRZnl1bGh0UE1LUHYNCkp5Q0F6ajZLckdMd3NqOFJxd24vaU5mamdWR2o2Z29WTlh2L3BlMExN\nNmtLS3grblJjSlFSVFlSSTcvcnR3SXENClJ3SURBUUFCDQotLS0tLUVORCBQVUJMSUMgS0VZLS0t\nLS0NCg=="
 
-func main() {
-	// TODO debugging
-	authToken := "Bearer $TOKEN"
-	token := strings.TrimPrefix(authToken, "Bearer ")
-	tokenParts := strings.Split(token, ".")
-	verifyKey, _ := base64.StdEncoding.DecodeString(EncodedVerifyKey)
-	key, _ := jwt.ParseRSAPublicKeyFromPEM(verifyKey)
-	signingMethod := &jwt.SigningMethodRSA{Name: "RS256", Hash: crypto.SHA256}
-	err := signingMethod.Verify(strings.Join(tokenParts[0:2], "."), tokenParts[2], key)
-
-	// TODO this doesn't work, something wrong with the key
-	// TODO at this stage the key is parsed as RS256 and the token is verified with it successfully
-	// TODO we just need to parse the claims from the key
-	//parsedToken, err := jwt.ParseWithClaims(token, &types.UserClaims{}, func(token *jwt.Token) (interface{}, error) {
-	//	return verifyKey, signingMethod.Verify(strings.Join(tokenParts[0:2], "."), tokenParts[2], key)
-	//})
-	fmt.Println(err)
-}
-
 func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerRequest) (events.APIGatewayCustomAuthorizerResponse, error) {
 	// validate the incoming token
 	// and produce the principal user identifier associated with the token
+
+	// get the token from the authorization header
 	token := strings.TrimPrefix(event.AuthorizationToken, "Bearer ")
+
+	// decode the verification public key
 	verifyKey, _ := base64.StdEncoding.DecodeString(EncodedVerifyKey)
 
-	// TODO this doesn't work, something wrong with the key
+	// validate and parse the token with our custom claims and key
 	parsedToken, err := jwt.ParseWithClaims(token, &types.UserClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return verifyKey, nil
+		return jwt.ParseRSAPublicKeyFromPEM(verifyKey)
 	})
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Unable to parse JWT with claims")
@@ -104,10 +88,10 @@ func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 
 	return resp.APIGatewayCustomAuthorizerResponse, nil
 }
-//
-//func main() {
-//	lambda.Start(handleRequest)
-//}
+
+func main() {
+	lambda.Start(handleRequest)
+}
 
 type HttpVerb int
 
