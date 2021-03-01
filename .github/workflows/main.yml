@@ -11,7 +11,7 @@ env:
 
 jobs:
   build:
-    name: Build
+    name: Build and Deploy
     runs-on: ubuntu-latest
     env:
       GOOS: linux
@@ -53,24 +53,6 @@ jobs:
           go build -ldflags="-s -w" -o bin/scoreTaker     lambda/score-taker/main.go
           go build -ldflags="-s -w" -o bin/authorizer     lambda/authorizer/main.go
 
-      - name: Upload binaries
-        uses: actions/upload-artifact@v2
-        with:
-          name: go-binaries
-          path: source/bin/*
-
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: go-binaries
-          path: source/bin
-
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
@@ -87,10 +69,11 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          JWT_VERIFY_KEY: ${{ secrets.JWT_VERIFY_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_SECRET_ID: ${{ secrets.GOOGLE_SECRET_ID }}
           FACEBOOK_CLIENT_ID: ${{ secrets.FACEBOOK_CLIENT_ID }}
           FACEBOOK_SECRET_ID: ${{ secrets.FACEBOOK_SECRET_ID }}
-          GH_SECRET_ID: ${{ secrets.GH_CLIENT_ID }
+          GH_SECRET_ID: ${{ secrets.GH_CLIENT_ID }}
           GH_CLIENT_ID: ${{ secrets.GH_SECRET_ID }}
         run: serverless deploy --verbose --stage dev
