@@ -84,6 +84,8 @@ functions:
     description: "Authorizes incoming APIGW requests and verifies the token"
     memorySize: 128
     timeout: 10
+    env:
+      JWT_VERIFY_KEY: ${env:JWT_VERIFY_KEY}
     package:
       include:
         - ./source/bin/authorizer

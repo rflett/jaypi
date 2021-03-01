@@ -21,12 +21,11 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 )
-
-const EncodedVerifyKey = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0NCk1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NB\nUThBTUlJQkNnS0NBUUVBclBpRHdmZFM3VGcrNW85SmpzMzQNCnRRbG5qUlJEa2xMSUgvTnZaTW1X\nREQ0WU9HckJUT0pUcTBxbXZoVW43UHczRzRrUkJxRENobTZzZUV4YTlpVWMNCndWaC93R3BzZWRi\nS2xDR2JKaGZKTldBTXkwUHVnQUdHMW9tengzWGg0eGc5WWIvL29VUnlnZ3NORDJVOVlOenoNCkg4\nQUJDZjd2TDJyYzBzcDQ5UXFQR1pXczhTMW95OGtzdE1uSkZCamhtbVFSQm9wVzU2ZWM1bDVJSGtr\nQ3VOOWgNCjY5dElPY2xUOFIxc25BZWZQUm54VS9mUHNJOE81M3M1TE56MmdoTlF6VU9qQnBqTDd2\nUEJRZnl1bGh0UE1LUHYNCkp5Q0F6ajZLckdMd3NqOFJxd24vaU5mamdWR2o2Z29WTlh2L3BlMExN\nNmtLS3grblJjSlFSVFlSSTcvcnR3SXENClJ3SURBUUFCDQotLS0tLUVORCBQVUJMSUMgS0VZLS0t\nLS0NCg=="
 
 func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerRequest) (events.APIGatewayCustomAuthorizerResponse, error) {
 	// validate the incoming token
@@ -36,7 +35,7 @@ func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 	token := strings.TrimPrefix(event.AuthorizationToken, "Bearer ")
 
 	// decode the verification public key
-	verifyKey, _ := base64.StdEncoding.DecodeString(EncodedVerifyKey)
+	verifyKey, _ := base64.StdEncoding.DecodeString(os.Getenv("JWT_VERIFY_KEY"))
 
 	// validate and parse the token with our custom claims and key
 	parsedToken, err := jwt.ParseWithClaims(token, &types.UserClaims{}, func(token *jwt.Token) (interface{}, error) {
