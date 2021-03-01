@@ -1,17 +1,23 @@
 package types
 
 const (
-	GroupPrimaryKey     = "GROUP"
-	GroupSortKey        = "#PROFILE"
-	SongPrimaryKey      = "SONG"
-	SongSortKey         = "#PROFILE"
-	UserPrimaryKey      = "USER"
-	UserSortKey         = "#PROFILE"
-	GroupCodePrimaryKey = "GROUP"
-	GroupCodeSortKey    = "#CODE"
-	PlayCountPrimaryKey = "PLAYCOUNT"
-	PlayCountSortKey    = "CURRENT"
-	GSI                 = "GSI1"
+	GroupPrimaryKey            = "GROUP"
+	GroupSortKey               = "#PROFILE"
+	SongPrimaryKey             = "SONG"
+	SongSortKey                = "#PROFILE"
+	UserPrimaryKey             = "USER"
+	UserSortKey                = "#PROFILE"
+	GroupCodePrimaryKey        = "GROUP"
+	GroupCodeSortKey           = "#CODE"
+	UserAuthProviderPrimaryKey = "USER"
+	UserAuthProviderSortKey    = "#PROVIDER_ID"
+	PlayCountPrimaryKey        = "PLAYCOUNT"
+	PlayCountSortKey           = "CURRENT"
+	GSI                        = "GSI1"
+	AuthProviderGoogle         = "google"
+	AuthProviderGitHub         = "github"
+	AuthProviderFacebook       = "facebook"
+	AuthProviderInternal       = "delegator"
 )
 
 type PlayCount struct {
@@ -29,4 +35,10 @@ type BeanCounterBody struct {
 type ScoreTakerBody struct {
 	Points int    `json:"points"`
 	UserID string `json:"userID"`
+}
+
+type LoginResponse struct {
+	User      User   `json:"user"`
+	Token     string `json:"token"`
+	TokenType string `json:"tokenType"`
 }

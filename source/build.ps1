@@ -1,7 +1,7 @@
-Get-ChildItem -Path .\bin -Include * -File -Recurse | ForEach-Object { $_.Delete()}
+Get-ChildItem -Path .\bin -Include * -File -Recurse | ForEach-Object { $_.Delete() }
 
-$env:GOOS="linux"
-go build -ldflags="-s -w" -o bin/createUser rest/user/createUser/main.go
+$env:GOOS = "linux"
+
 go build -ldflags="-s -w" -o bin/getUser rest/user/getUser/main.go
 go build -ldflags="-s -w" -o bin/updateUser rest/user/updateUser/main.go
 
@@ -15,6 +15,12 @@ go build -ldflags="-s -w" -o bin/getGroupQR rest/group/getGroupQR/main.go
 go build -ldflags="-s -w" -o bin/createVote rest/votes/createVote/main.go
 go build -ldflags="-s -w" -o bin/deleteVote rest/votes/deleteVote/main.go
 
+go build -ldflags="-s -w" -o bin/signup rest/account/signup/main.go
+go build -ldflags="-s -w" -o bin/signin rest/account/signin/main.go
+go build -ldflags="-s -w" -o bin/oauthAuthenticate rest/oauth/authenticate/main.go
+go build -ldflags="-s -w" -o bin/oauthCallback rest/oauth/callback/main.go
+
 go build -ldflags="-s -w" -o bin/chuneMachine lambda/chune-machine/main.go
 go build -ldflags="-s -w" -o bin/beanCounter lambda/bean-counter/main.go
 go build -ldflags="-s -w" -o bin/scoreTaker lambda/score-taker/main.go
+go build -ldflags="-s -w" -o bin/authorizer lambda/authorizer/main.go

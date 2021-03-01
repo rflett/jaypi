@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
@@ -61,4 +62,36 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 		return g, err
 	}
 	return g, nil
+}
+
+// HashAndSaltPassword generates a salt and hashes a password with it using bcrypt
+func HashAndSaltPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to generate hashed password")
+		return "", err
+	}
+	return string(hashed), nil
+}
+
+// ComparePasswords compares a hashed password with a plain text one and sees if they match
+func ComparePasswords(hashedPassword string, textPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(textPassword))
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to compare passwords")
+		return false
+	}
+	return true
+}
+
+// GetOauthProvider retrieves an oauth provider by its string name
+func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
+	provider, exists := types.OauthProviders[providerName]
+
+	if !exists {
+		logger.Log.Warn().Msg(fmt.Sprintf("Unhandled provider requested %s", providerName))
+		return nil, fmt.Errorf("Sorry. That oauth provider isn't supported.")
+	}
+
+	return provider, nil
 }

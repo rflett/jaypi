@@ -6,18 +6,19 @@ provider:
   runtime: go1.x
   region: ap-southeast-2
   stage: ${opt:staging, 'dev'}
-  role: arn:aws:iam::292374005836:role/lambda-jaypi
+  useDotenv: true
+  lambdaHashingVersion: 20201221
+  iam:
+    role: arn:aws:iam::292374005836:role/lambda-jaypi
   environment:
     JAYPI_TABLE: jaypi
 
 package:
+  individually: true
   exclude:
     - ./**
-  include:
-    - ./source/bin/**
 
 functions:
-
   # Chune Machine
   chuneMachine:
     handler: source/bin/chuneMachine
@@ -26,9 +27,12 @@ functions:
     memorySize: 128
     timeout: 20
     reservedConcurrency: 1
+    package:
+      include:
+        - ./source/bin/chuneMachine
     environment:
-      SPOTIFY_CLIENT_ID: ${opt:SpotifyClientID}
-      SPOTIFY_SECRET_ID: ${opt:SpotifySecretID}
+      SPOTIFY_CLIENT_ID: e2d95c4b73d24663b22c220e3c78bb0e
+      SPOTIFY_SECRET_ID: 079699d33ca94e37a92f457f71fec846
       REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/chune-refresh-${self:provider.stage}
       COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/bean-counter-${self:provider.stage}
     events:
@@ -45,6 +49,9 @@ functions:
     memorySize: 128
     timeout: 20
     reservedConcurrency: 1
+    package:
+      include:
+        - ./source/bin/beanCounter
     environment:
       SCORER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/scorer-${self:provider.stage}
     events:
@@ -61,37 +68,123 @@ functions:
     memorySize: 128
     timeout: 20
     reservedConcurrency: 100
+    package:
+      include:
+        - ./source/bin/scoreTaker
     events:
       - sqs:
           arn: arn:aws:sqs:ap-southeast-2:292374005836:scorer-${self:provider.stage}
           batchSize: 1
           enabled: true
 
-  # USERS
-  createUser:
-    handler: source/bin/createUser
-    name: create-user-${self:provider.stage}
-    description: "Create a user"
+  # ACCOUNT
+  authorizer:
+    handler: source/bin/authorizer
+    name: ${self:service}-authorizer-${self:provider.stage}
+    description: "Authorizes incoming APIGW requests and verifies the token"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/authorizer
+
+  signup:
+    handler: source/bin/signup
+    name: account-signup-${self:provider.stage}
+    description: "Signup with email and password"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/signup
     events:
       - http:
-          path: user
+          path: account/signup
           method: post
           request:
             schema:
-              application/json: ${file(schemas/user/create.json)}
+              application/json: ${file(schemas/account/signup.json)}
 
+  signin:
+    handler: source/bin/signin
+    name: account-signin-${self:provider.stage}
+    description: "Sign in with email and password"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/signin
+    events:
+      - http:
+          path: account/signin
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/account/signin.json)}
+
+  authenticate:
+    handler: source/bin/oauthAuthenticate
+    name: oauth-authenticate-${self:provider.stage}
+    description: "Retrieves a login URL for a chosen oauth provider"
+    memorySize: 128
+    timeout: 10
+    env:
+      OAUTH_CALLBACK_HOST: "http://localhost:8080"
+      GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+      GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
+      FACEBOOK_CLIENT_ID: ${env:FACEBOOK_CLIENT_ID}
+      FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
+      GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
+      GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
+    package:
+      include:
+        - ./source/bin/oauthAuthenticate
+    events:
+      - http:
+          path: oauth/{provider}/login
+          method: get
+
+  oauthCallback:
+    handler: source/bin/oauthCallback
+    name: oauth-callback-${self:provider.stage}
+    description: "Provides a url for oauth providers to redirect to"
+    memorySize: 128
+    timeout: 10
+    env:
+      OAUTH_CALLBACK_HOST: "http://localhost:8080"
+      GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+      GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
+      FACEBOOK_CLIENT_ID: ${env:FACEBOOK_CLIENT_ID}
+      FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
+      GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
+      GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
+    package:
+      include:
+        - ./source/bin/oauthCallback
+    events:
+      - http:
+          path: oauth/{provider}/redirect
+          method: get
+
+  # USERS
   getUser:
     handler: source/bin/getUser
     name: get-user-${self:provider.stage}
     description: "Get a user"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/getUser
     events:
       - http:
           path: user/{userId}
           method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   updateUser:
     handler: source/bin/updateUser
@@ -99,6 +192,9 @@ functions:
     description: "Update a user"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/updateUser
     events:
       - http:
           path: user/{userId}
@@ -106,7 +202,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/user/update.json)}
-
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
   # GROUPS
   createGroup:
     handler: source/bin/createGroup
@@ -114,6 +214,9 @@ functions:
     description: "Creates a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/createGroup
     events:
       - http:
           path: group
@@ -121,6 +224,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/group/create.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   getGroup:
     handler: source/bin/getGroup
@@ -128,10 +236,18 @@ functions:
     description: "Get a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/getGroup
     events:
       - http:
           path: group/{groupId}
           method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   updateGroup:
     handler: source/bin/updateGroup
@@ -139,6 +255,9 @@ functions:
     description: "Update a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/updateGroup
     events:
       - http:
           path: group/{groupId}
@@ -146,6 +265,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/group/update.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   joinGroup:
     handler: source/bin/joinGroup
@@ -153,6 +277,9 @@ functions:
     description: "Join a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/joinGroup
     events:
       - http:
           path: group/join
@@ -160,6 +287,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/group/join.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   leaveGroup:
     handler: source/bin/leaveGroup
@@ -167,10 +299,18 @@ functions:
     description: "Leave a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/leaveGroup
     events:
       - http:
           path: group/{groupId}/user/{userId}
           method: delete
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   getGroupQR:
     handler: source/bin/getGroupQR
@@ -178,18 +318,29 @@ functions:
     description: "Get the QR invite for a group"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/getGroupQR
     events:
       - http:
           path: group/{groupId}/qr
           method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
- # VOTES
+  # VOTES
   createVote:
     handler: source/bin/createVote
     name: create-vote-${self:provider.stage}
     description: "Create a vote"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/createVote
     events:
       - http:
           path: user/{userId}/vote
@@ -197,6 +348,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/votes/create.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   deleteVote:
     handler: source/bin/deleteVote
@@ -204,7 +360,15 @@ functions:
     description: "Delete a vote"
     memorySize: 128
     timeout: 10
+    package:
+      include:
+        - ./source/bin/deleteVote
     events:
       - http:
           path: user/{userId}/vote/{songId}
           method: delete
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token

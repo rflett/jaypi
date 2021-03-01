@@ -110,57 +110,6 @@
 					]
 				},
 				{
-					"name": "Create User",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"response is ok\", function () {\r",
-									"    pm.response.to.have.status(201);\r",
-									"});\r",
-									"\r",
-									"pm.test(\"response must be valid and have a body\", function () {\r",
-									"     pm.response.to.be.json;\r",
-									"});\r",
-									"\r",
-									"var jsonData = pm.response.json();\r",
-									"\r",
-									"pm.test(\"Check userID is in response\", function () {\r",
-									"    pm.expect(jsonData).to.have.property('userID');\r",
-									"});\r",
-									"pm.environment.set(\"userID\", jsonData.userID);\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"firstName\": \"Ryan\",\r\n  \"lastName\": \"Flett\",\r\n  \"nickName\": \"fletty\",\r\n  \"email\": \"ryan.flett1@gmail.com\"\r\n}\r\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/user",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"user"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Update User",
 					"event": [
 						{
@@ -517,16 +466,6 @@
 					"response": []
 				}
 			],
-			"auth": {
-				"type": "bearer",
-				"bearer": [
-					{
-						"key": "token",
-						"value": "{{spotifyAccessToken}}",
-						"type": "string"
-					}
-				]
-			},
 			"event": [
 				{
 					"listen": "prerequest",
@@ -582,9 +521,275 @@
 					},
 					"response": []
 				}
+			],
+			"auth": {
+				"type": "noauth"
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "OAuth",
+			"item": [
+				{
+					"name": "Authenticate",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/oauth/google/login",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"oauth",
+								"google",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Callback",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([200,201]);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response must be valid and have a body\", function () {\r",
+									"     pm.response.to.be.json;\r",
+									"});\r",
+									"\r",
+									"var jsonData = pm.response.json();\r",
+									"var userData = jsonData.user;\r",
+									"\r",
+									"pm.test(\"Check userID is in response\", function () {\r",
+									"    pm.expect(jsonData).to.have.property('user');\r",
+									"    pm.expect(userData).to.have.property('userID');\r",
+									"});\r",
+									"pm.environment.set(\"userID\", userData.userID);\r",
+									"\r",
+									"pm.test(\"Check token is in response\", function() {\r",
+									"    pm.expect(jsonData).to.have.property('token');\r",
+									"    pm.expect(jsonData).to.have.property('tokenType');\r",
+									"})\r",
+									"pm.environment.set(\"token\", jsonData.token);\r",
+									"pm.environment.set(\"tokenType\", jsonData.tokenType);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/oauth/google/redirect?state=13f5f394-6f7f-4949-b981-c4c29b6c6299&code=4%2F0AY0e-g5hLNENRpLJ1sZRw7np3po8iOAhhb4e4NcZHRQi7trnERzF0Ie6kQntMa4zjhC5iQ&scope=email+profile+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&authuser=0&hd=delegator.com.au&prompt=none",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"oauth",
+								"google",
+								"redirect"
+							],
+							"query": [
+								{
+									"key": "state",
+									"value": "13f5f394-6f7f-4949-b981-c4c29b6c6299"
+								},
+								{
+									"key": "code",
+									"value": "4%2F0AY0e-g5hLNENRpLJ1sZRw7np3po8iOAhhb4e4NcZHRQi7trnERzF0Ie6kQntMa4zjhC5iQ"
+								},
+								{
+									"key": "scope",
+									"value": "email+profile+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile"
+								},
+								{
+									"key": "authuser",
+									"value": "0"
+								},
+								{
+									"key": "hd",
+									"value": "delegator.com.au"
+								},
+								{
+									"key": "prompt",
+									"value": "none"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Account",
+			"item": [
+				{
+					"name": "Signup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(201);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response must be valid and have a body\", function () {\r",
+									"     pm.response.to.be.json;\r",
+									"});\r",
+									"\r",
+									"var jsonData = pm.response.json();\r",
+									"var userData = jsonData.user;\r",
+									"\r",
+									"pm.test(\"Check userID is in response\", function () {\r",
+									"    pm.expect(jsonData).to.have.property('user');\r",
+									"    pm.expect(userData).to.have.property('userID');\r",
+									"});\r",
+									"pm.environment.set(\"userID\", userData.userID);\r",
+									"\r",
+									"pm.test(\"Check token is in response\", function() {\r",
+									"    pm.expect(jsonData).to.have.property('token');\r",
+									"    pm.expect(jsonData).to.have.property('tokenType');\r",
+									"})\r",
+									"pm.environment.set(\"token\", jsonData.token);\r",
+									"pm.environment.set(\"tokenType\", jsonData.tokenType);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"Ryan Flett\",\r\n  \"nickName\": \"fletty\",\r\n  \"email\": \"flettel@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/account/signup",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"account",
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Signin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response must be valid and have a body\", function () {\r",
+									"     pm.response.to.be.json;\r",
+									"});\r",
+									"\r",
+									"var jsonData = pm.response.json();\r",
+									"var userData = jsonData.user;\r",
+									"\r",
+									"pm.test(\"Check userID is in response\", function () {\r",
+									"    pm.expect(jsonData).to.have.property('user');\r",
+									"    pm.expect(userData).to.have.property('userID');\r",
+									"});\r",
+									"pm.environment.set(\"userID\", userData.userID);\r",
+									"\r",
+									"pm.test(\"Check token is in response\", function() {\r",
+									"    pm.expect(jsonData).to.have.property('token');\r",
+									"    pm.expect(jsonData).to.have.property('tokenType');\r",
+									"})\r",
+									"pm.environment.set(\"token\", jsonData.token);\r",
+									"pm.environment.set(\"tokenType\", jsonData.tokenType);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"flettel@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/account/signin",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"account",
+								"signin"
+							]
+						}
+					},
+					"response": []
+				}
 			]
 		}
 	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
 	"event": [
 		{
 			"listen": "prerequest",

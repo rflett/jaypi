@@ -1,0 +1,211 @@
+// Copyright 2015-2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License").
+// You may not use this file except in compliance with the License.
+// A copy of the License is located at
+//
+//     http://aws.amazon.com/apache2.0/
+//
+// or in the "license" file accompanying this file. This file is distributed
+// on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+// express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
+package main
+
+import (
+	"context"
+	"encoding/base64"
+	"errors"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/dgrijalva/jwt-go"
+	"jjj.rflett.com/jjj-api/logger"
+	"jjj.rflett.com/jjj-api/types"
+	"strings"
+
+	"github.com/aws/aws-lambda-go/events"
+)
+
+const EncodedVerifyKey = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0NCk1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NB\nUThBTUlJQkNnS0NBUUVBclBpRHdmZFM3VGcrNW85SmpzMzQNCnRRbG5qUlJEa2xMSUgvTnZaTW1X\nREQ0WU9HckJUT0pUcTBxbXZoVW43UHczRzRrUkJxRENobTZzZUV4YTlpVWMNCndWaC93R3BzZWRi\nS2xDR2JKaGZKTldBTXkwUHVnQUdHMW9tengzWGg0eGc5WWIvL29VUnlnZ3NORDJVOVlOenoNCkg4\nQUJDZjd2TDJyYzBzcDQ5UXFQR1pXczhTMW95OGtzdE1uSkZCamhtbVFSQm9wVzU2ZWM1bDVJSGtr\nQ3VOOWgNCjY5dElPY2xUOFIxc25BZWZQUm54VS9mUHNJOE81M3M1TE56MmdoTlF6VU9qQnBqTDd2\nUEJRZnl1bGh0UE1LUHYNCkp5Q0F6ajZLckdMd3NqOFJxd24vaU5mamdWR2o2Z29WTlh2L3BlMExN\nNmtLS3grblJjSlFSVFlSSTcvcnR3SXENClJ3SURBUUFCDQotLS0tLUVORCBQVUJMSUMgS0VZLS0t\nLS0NCg=="
+
+func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerRequest) (events.APIGatewayCustomAuthorizerResponse, error) {
+	// validate the incoming token
+	// and produce the principal user identifier associated with the token
+
+	// get the token from the authorization header
+	token := strings.TrimPrefix(event.AuthorizationToken, "Bearer ")
+
+	// decode the verification public key
+	verifyKey, _ := base64.StdEncoding.DecodeString(EncodedVerifyKey)
+
+	// validate and parse the token with our custom claims and key
+	parsedToken, err := jwt.ParseWithClaims(token, &types.UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwt.ParseRSAPublicKeyFromPEM(verifyKey)
+	})
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to parse JWT with claims")
+		return events.APIGatewayCustomAuthorizerResponse{}, err
+	}
+	if !parsedToken.Valid {
+		logger.Log.Info().Msg("JWT token is not valid")
+		return events.APIGatewayCustomAuthorizerResponse{}, errors.New("Unauthorized")
+	}
+	claims := parsedToken.Claims.(*types.UserClaims)
+	principalID := claims.Subject
+	logger.Log.Info().Str("userID", principalID).Msg("Successfully parsed and validated token for user")
+
+	// if the token is valid, a policy must be generated which will allow or deny access to the client
+
+	// if access is denied, the client will receive a 403 Access Denied response
+	// if access is allowed, API Gateway will proceed with the backend integration configured on the method that was called
+
+	// this function must generate a policy that is associated with the recognized principal user identifier.
+	// depending on your use case, you might store policies in a DB, or generate them on the fly
+
+	// keep in mind, the policy is cached for 5 minutes by default (TTL is configurable in the authorizer)
+	// and will apply to subsequent calls to any method/resource in the RestApi made with the same token
+
+	//the policy below allows access to all resources in the RestApi
+	tmp := strings.Split(event.MethodArn, ":")
+	apiGatewayArnTmp := strings.Split(tmp[5], "/")
+	awsAccountID := tmp[4]
+
+	resp := NewAuthorizerResponse(principalID, awsAccountID)
+	resp.Region = tmp[3]
+	resp.APIID = apiGatewayArnTmp[0]
+	resp.Stage = apiGatewayArnTmp[1]
+	resp.AllowAllMethods()
+
+	// new! -- add additional key-value pairs associated with the authenticated principal
+	// these are made available by APIGW like so: $context.authorizer.<key>
+	// additional context is cached
+	resp.Context = map[string]interface{}{
+		"AuthProvider":   claims.AuthProvider,
+		"AuthProviderId": claims.AuthProviderId,
+		"Name":           claims.Name,
+		"UserID":         claims.Subject,
+	}
+
+	return resp.APIGatewayCustomAuthorizerResponse, nil
+}
+
+func main() {
+	lambda.Start(handleRequest)
+}
+
+type HttpVerb int
+
+const (
+	Get HttpVerb = iota
+	Post
+	Put
+	Delete
+	Patch
+	Head
+	Options
+	All
+)
+
+func (hv HttpVerb) String() string {
+	switch hv {
+	case Get:
+		return "GET"
+	case Post:
+		return "POST"
+	case Put:
+		return "PUT"
+	case Delete:
+		return "DELETE"
+	case Patch:
+		return "PATCH"
+	case Head:
+		return "HEAD"
+	case Options:
+		return "OPTIONS"
+	case All:
+		return "*"
+	}
+	return ""
+}
+
+type Effect int
+
+const (
+	Allow Effect = iota
+	Deny
+)
+
+func (e Effect) String() string {
+	switch e {
+	case Allow:
+		return "Allow"
+	case Deny:
+		return "Deny"
+	}
+	return ""
+}
+
+type AuthorizerResponse struct {
+	events.APIGatewayCustomAuthorizerResponse
+
+	// The region where the API is deployed. By default this is set to '*'
+	Region string
+
+	// The AWS account id the policy will be generated for. This is used to create the method ARNs.
+	AccountID string
+
+	// The API Gateway API id. By default this is set to '*'
+	APIID string
+
+	// The name of the stage used in the policy. By default this is set to '*'
+	Stage string
+}
+
+func NewAuthorizerResponse(principalID string, AccountID string) *AuthorizerResponse {
+	return &AuthorizerResponse{
+		APIGatewayCustomAuthorizerResponse: events.APIGatewayCustomAuthorizerResponse{
+			PrincipalID: principalID,
+			PolicyDocument: events.APIGatewayCustomAuthorizerPolicy{
+				Version: "2012-10-17",
+			},
+		},
+		Region:    "*",
+		AccountID: AccountID,
+		APIID:     "*",
+		Stage:     "*",
+	}
+}
+
+func (r *AuthorizerResponse) addMethod(effect Effect, verb HttpVerb, resource string) {
+	resourceArn := "arn:aws:execute-api:" +
+		r.Region + ":" +
+		r.AccountID + ":" +
+		r.APIID + "/" +
+		r.Stage + "/" +
+		verb.String() + "/" +
+		strings.TrimLeft(resource, "/")
+
+	s := events.IAMPolicyStatement{
+		Effect:   effect.String(),
+		Action:   []string{"execute-api:Invoke"},
+		Resource: []string{resourceArn},
+	}
+
+	r.PolicyDocument.Statement = append(r.PolicyDocument.Statement, s)
+}
+
+func (r *AuthorizerResponse) AllowAllMethods() {
+	r.addMethod(Allow, All, "*")
+}
+
+func (r *AuthorizerResponse) DenyAllMethods() {
+	r.addMethod(Deny, All, "*")
+}
+
+func (r *AuthorizerResponse) AllowMethod(verb HttpVerb, resource string) {
+	r.addMethod(Allow, verb, resource)
+}
+
+func (r *AuthorizerResponse) DenyMethod(verb HttpVerb, resource string) {
+	r.addMethod(Deny, verb, resource)
+}

@@ -336,8 +336,8 @@ func (g *Group) NewCode() error {
 	}
 
 	gc := GroupCode{
-		PK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
-		SK:      fmt.Sprintf("%s#%s", "#CODE", code),
+		PK:      fmt.Sprintf("%s#%s", GroupCodePrimaryKey, g.GroupID),
+		SK:      fmt.Sprintf("%s#%s", GroupCodeSortKey, code),
 		GroupID: g.GroupID,
 		Code:    code,
 	}
