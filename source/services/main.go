@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -94,4 +95,25 @@ func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
 	}
 
 	return provider, nil
+}
+
+// GetEndpointInfo paginates the endpoints in a platform application
+func GetEndpointInfo(arn *string, token string) (*types.NotieEndpointInfo, error) {
+	var userData *string
+	input := &sns.ListEndpointsByPlatformApplicationInput{PlatformApplicationArn: arn}
+	err := clients.SNSClient.ListEndpointsByPlatformApplicationPages(input, func(page *sns.ListEndpointsByPlatformApplicationOutput, lastPage bool) bool {
+		for _, endpoint := range page.Endpoints {
+			if *endpoint.Attributes["Token"] == token {
+				userData = endpoint.Attributes["CustomUserData"]
+				return false
+			}
+		}
+		return !lastPage
+	})
+
+	if err != nil {
+		logger.Log.Error().Err(err).Str("arn", *arn).Msg("error listing endpoints for platform app")
+		return &types.NotieEndpointInfo{}, err
+	}
+	return nil, nil
 }
