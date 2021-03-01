@@ -18,7 +18,7 @@ go build -ldflags="-s -w" -o bin/deleteVote rest/votes/deleteVote/main.go
 go build -ldflags="-s -w" -o bin/signup rest/account/signup/main.go
 go build -ldflags="-s -w" -o bin/signin rest/account/signin/main.go
 go build -ldflags="-s -w" -o bin/oauthAuthenticate rest/oauth/authenticate/main.go
-go build -ldflags="-s -w" -o bin/oauthProviderRedirect rest/oauth/callback/main.go
+go build -ldflags="-s -w" -o bin/oauthCallback rest/oauth/callback/main.go
 
 go build -ldflags="-s -w" -o bin/chuneMachine lambda/chune-machine/main.go
 go build -ldflags="-s -w" -o bin/beanCounter lambda/bean-counter/main.go

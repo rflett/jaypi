@@ -6,17 +6,8 @@ import (
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
+	"os"
 	"strconv"
-)
-
-const (
-	RedirectHost     = "http://localhost:8080"
-	GoogleClientID   = "771130202315-b17g52r80dlcja1qkffsralopnkd17be.apps.googleusercontent.com"
-	GoogleSecretID   = "iv2qRoPnYKuhKv-OBvtEr97t"
-	FacebookClientID = "5051487981591665"
-	FacebookSecretID = "71f680f2c46e360f13401e4a3a397564"
-	GithubClientID   = "fab65d432ef4b19d33c7"
-	GithubSecretID   = "4380b71c34e8b227f76c7107c3349067d33582b3"
 )
 
 type OauthResponse struct {
@@ -34,9 +25,9 @@ type OauthProvider struct {
 
 var GoogleOauth = OauthProvider{
 	Config: oauth2.Config{
-		ClientID:     GoogleClientID,
-		ClientSecret: GoogleSecretID,
-		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", RedirectHost, AuthProviderGoogle),
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_SECRET_ID"),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", os.Getenv("OAUTH_CALLBACK_HOST"), AuthProviderGoogle),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
@@ -53,9 +44,9 @@ var GoogleOauth = OauthProvider{
 
 var FacebookOauth = OauthProvider{
 	Config: oauth2.Config{
-		ClientID:     FacebookClientID,
-		ClientSecret: FacebookSecretID,
-		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", RedirectHost, AuthProviderFacebook),
+		ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
+		ClientSecret: os.Getenv("FACEBOOK_SECRET_ID"),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", os.Getenv("OAUTH_CALLBACK_HOST"), AuthProviderFacebook),
 		Scopes: []string{
 			"public_profile",
 			"email",
@@ -73,9 +64,9 @@ var FacebookOauth = OauthProvider{
 
 var GithubOauth = OauthProvider{
 	Config: oauth2.Config{
-		ClientID:     GithubClientID,
-		ClientSecret: GithubSecretID,
-		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", RedirectHost, AuthProviderGitHub),
+		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+		ClientSecret: os.Getenv("GITHUB_SECRET_ID"),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", os.Getenv("OAUTH_CALLBACK_HOST"), AuthProviderGitHub),
 		Scopes:       []string{},
 		Endpoint:     github.Endpoint,
 	},

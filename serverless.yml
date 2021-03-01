@@ -10,8 +10,6 @@ provider:
   lambdaHashingVersion: 20201221
   iam:
     role: arn:aws:iam::292374005836:role/lambda-jaypi
-  #  apiGateway:
-  #    shouldStartNameWithService: true
   environment:
     JAYPI_TABLE: jaypi
 
@@ -21,7 +19,6 @@ package:
     - ./**
 
 functions:
-
   # Chune Machine
   chuneMachine:
     handler: source/bin/chuneMachine
@@ -80,7 +77,7 @@ functions:
           batchSize: 1
           enabled: true
 
-  # Account
+  # ACCOUNT
   authorizer:
     handler: source/bin/authorizer
     name: ${self:service}-authorizer-${self:provider.stage}
@@ -131,6 +128,14 @@ functions:
     description: "Retrieves a login URL for a chosen oauth provider"
     memorySize: 128
     timeout: 10
+    env:
+      OAUTH_CALLBACK_HOST: "http://localhost:8080"
+      GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+      GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
+      FACEBOOK_CLIENT_ID: ${env:FACEBOOK_CLIENT_ID}
+      FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
+      GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
+      GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
     package:
       include:
         - ./source/bin/oauthAuthenticate
@@ -139,15 +144,23 @@ functions:
           path: oauth/{provider}/login
           method: get
 
-  providerRedirect:
-    handler: source/bin/oauthProviderRedirect
-    name: oauth-redirect-${self:provider.stage}
+  oauthCallback:
+    handler: source/bin/oauthCallback
+    name: oauth-callback-${self:provider.stage}
     description: "Provides a url for oauth providers to redirect to"
     memorySize: 128
     timeout: 10
+    env:
+      OAUTH_CALLBACK_HOST: "http://localhost:8080"
+      GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+      GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
+      FACEBOOK_CLIENT_ID: ${env:FACEBOOK_CLIENT_ID}
+      FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
+      GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
+      GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
     package:
       include:
-        - ./source/bin/oauthProviderRedirect
+        - ./source/bin/oauthCallback
     events:
       - http:
           path: oauth/{provider}/redirect
@@ -189,6 +202,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/user/update.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
   # GROUPS
   createGroup:
     handler: source/bin/createGroup
@@ -206,6 +224,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/group/create.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   getGroup:
     handler: source/bin/getGroup
@@ -220,6 +243,11 @@ functions:
       - http:
           path: group/{groupId}
           method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   updateGroup:
     handler: source/bin/updateGroup
@@ -237,6 +265,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/group/update.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   joinGroup:
     handler: source/bin/joinGroup
@@ -254,6 +287,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/group/join.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   leaveGroup:
     handler: source/bin/leaveGroup
@@ -268,6 +306,11 @@ functions:
       - http:
           path: group/{groupId}/user/{userId}
           method: delete
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   getGroupQR:
     handler: source/bin/getGroupQR
@@ -282,6 +325,11 @@ functions:
       - http:
           path: group/{groupId}/qr
           method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   # VOTES
   createVote:
@@ -300,6 +348,11 @@ functions:
           request:
             schema:
               application/json: ${file(schemas/votes/create.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
 
   deleteVote:
     handler: source/bin/deleteVote
@@ -314,3 +367,8 @@ functions:
       - http:
           path: user/{userId}/vote/{songId}
           method: delete
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token

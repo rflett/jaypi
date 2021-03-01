@@ -1,5 +1,9 @@
 # Serverless directories
 .serverless
+.env
+.env.staging
+.env.production
+.env
 
 # Binaries for programs and plugins
 source/bin/*
@@ -17,7 +21,5 @@ source/bin/*
 
 scratch/
 .idea/
-
-env.yml
 
 terraform/.terraform

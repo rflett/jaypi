@@ -30,10 +30,10 @@ jobs:
       - name: Build
         working-directory: source/
         run: |
-          go build -ldflags="-s -w" -o bin/signup                rest/account/signup/main.go
-          go build -ldflags="-s -w" -o bin/signin                rest/account/signin/main.go
-          go build -ldflags="-s -w" -o bin/oauthAuthenticate     rest/oauth/authenticate/main.go
-          go build -ldflags="-s -w" -o bin/oauthProviderRedirect rest/oauth/callback/main.go
+          go build -ldflags="-s -w" -o bin/signup             rest/account/signup/main.go
+          go build -ldflags="-s -w" -o bin/signin             rest/account/signin/main.go
+          go build -ldflags="-s -w" -o bin/oauthAuthenticate  rest/oauth/authenticate/main.go
+          go build -ldflags="-s -w" -o bin/oauthCallback      rest/oauth/callback/main.go
 
           go build -ldflags="-s -w" -o bin/getUser        rest/user/getUser/main.go
           go build -ldflags="-s -w" -o bin/updateUser     rest/user/updateUser/main.go
@@ -87,4 +87,10 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: serverless deploy --verbose --stage dev --SpotifyClientID "${{ secrets.SPOTIFY_CLIENT_ID }}" --SpotifySecretID "${{ secrets.SPOTIFY_SECRET_ID }}"
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_SECRET_ID: ${{ secrets.GOOGLE_SECRET_ID }}
+          FACEBOOK_CLIENT_ID: ${{ secrets.FACEBOOK_CLIENT_ID }}
+          FACEBOOK_SECRET_ID: ${{ secrets.FACEBOOK_SECRET_ID }}
+          GITHUB_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          GITHUB_SECRET_ID: ${{ secrets.GH_SECRET_ID }}
+        run: serverless deploy --verbose --stage dev
