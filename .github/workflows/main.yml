@@ -59,7 +59,7 @@ jobs:
           node-version: 12.x
 
       - name: Install serverless
-        run: npm install -g serverless
+        run: npm install -g serverless serverless-dotenv-plugin
 
       - name: Set file permissions
         working-directory: source/bin

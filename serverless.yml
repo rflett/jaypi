@@ -1,5 +1,7 @@
 service: jjj-api
 frameworkVersion: '>=2.25.2 < 3.0.0'
+plugins:
+  - serverless-dotenv-plugin
 
 provider:
   name: aws
