@@ -160,7 +160,6 @@ func (u *User) Update() (status int, error error) {
 		},
 		ReturnValues:        aws.String("NONE"),
 		TableName:           &clients.DynamoTable,
-		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
