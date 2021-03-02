@@ -1,11 +1,14 @@
 service: jjj-api
 frameworkVersion: '>=2.25.2 < 3.0.0'
+plugins:
+  - serverless-dotenv-plugin
 
 provider:
   name: aws
   runtime: go1.x
   region: ap-southeast-2
   stage: ${opt:staging, 'dev'}
+  useDotenv: true
   lambdaHashingVersion: 20201221
   iam:
     role: arn:aws:iam::292374005836:role/lambda-jaypi
@@ -84,7 +87,7 @@ functions:
     memorySize: 128
     timeout: 10
     env:
-      JWT_VERIFY_KEY: ${opt:JWT_VERIFY_KEY}
+      JWT_VERIFY_KEY: ${env:JWT_VERIFY_KEY}
     package:
       include:
         - ./source/bin/authorizer
@@ -131,12 +134,12 @@ functions:
     timeout: 10
     env:
       OAUTH_CALLBACK_HOST: "http://localhost:8080"
-      GOOGLE_CLIENT_ID: ${opt:GOOGLE_CLIENT_ID}
-      GOOGLE_SECRET_ID: ${opt:GOOGLE_SECRET_ID}
-      FACEBOOK_CLIENT_ID: ${opt:FACEBOOK_CLIENT_ID}
-      FACEBOOK_SECRET_ID: ${opt:FACEBOOK_SECRET_ID}
-      GITHUB_CLIENT_ID: ${opt:GH_CLIENT_ID}
-      GITHUB_SECRET_ID: ${opt:GH_SECRET_ID}
+      GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+      GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
+      FACEBOOK_CLIENT_ID: ${env:FACEBOOK_CLIENT_ID}
+      FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
+      GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
+      GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
     package:
       include:
         - ./source/bin/oauthAuthenticate
@@ -153,12 +156,12 @@ functions:
     timeout: 10
     env:
       OAUTH_CALLBACK_HOST: "http://localhost:8080"
-      GOOGLE_CLIENT_ID: ${opt:GOOGLE_CLIENT_ID}
-      GOOGLE_SECRET_ID: ${opt:GOOGLE_SECRET_ID}
-      FACEBOOK_CLIENT_ID: ${opt:FACEBOOK_CLIENT_ID}
-      FACEBOOK_SECRET_ID: ${opt:FACEBOOK_SECRET_ID}
-      GITHUB_CLIENT_ID: ${opt:GH_CLIENT_ID}
-      GITHUB_SECRET_ID: ${opt:GH_SECRET_ID}
+      GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+      GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
+      FACEBOOK_CLIENT_ID: ${env:FACEBOOK_CLIENT_ID}
+      FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
+      GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
+      GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
     package:
       include:
         - ./source/bin/oauthCallback
