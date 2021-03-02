@@ -19,19 +19,21 @@ import (
 
 // User is a User of the application
 type User struct {
-	PK             string  `json:"-" dynamodbav:"PK"`
-	SK             string  `json:"-" dynamodbav:"SK"`
-	UserID         string  `json:"userID"`
-	Name           string  `json:"name"`
-	Email          string  `json:"email"`
-	Points         int     `json:"points"`
-	CreatedAt      string  `json:"createdAt"`
-	NickName       *string `json:"nickName"`
-	Password       *string `json:"-" dynamodbav:"password"`
-	AuthProvider   *string `json:"authProvider"`
-	AuthProviderId *string `json:"authProviderId"`
-	AvatarUrl      *string `json:"avatarUrl"`
-	UpdatedAt      *string `json:"updatedAt"`
+	PK               string    `json:"-" dynamodbav:"PK"`
+	SK               string    `json:"-" dynamodbav:"SK"`
+	UserID           string    `json:"userID"`
+	Name             string    `json:"name"`
+	Email            string    `json:"email"`
+	Points           int       `json:"points"`
+	CreatedAt        string    `json:"createdAt"`
+	NickName         *string   `json:"nickName"`
+	Password         *string   `json:"-" dynamodbav:"password"`
+	AuthProvider     *string   `json:"authProvider"`
+	AuthProviderId   *string   `json:"authProviderId"`
+	AvatarUrl        *string   `json:"avatarUrl"`
+	UpdatedAt        *string   `json:"updatedAt"`
+	IOSEndpoints     *[]string `json:"iosEndpoints" dynamodbav:"stringset"`
+	AndroidEndpoints *[]string `json:"androidEndpoints" dynamodbav:"stringset"`
 }
 
 // userAuthProvider represents a user and their AuthProviderId
