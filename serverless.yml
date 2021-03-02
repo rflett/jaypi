@@ -33,8 +33,8 @@ functions:
       include:
         - ./source/bin/chuneMachine
     environment:
-      SPOTIFY_CLIENT_ID: e2d95c4b73d24663b22c220e3c78bb0e
-      SPOTIFY_SECRET_ID: 079699d33ca94e37a92f457f71fec846
+      SPOTIFY_CLIENT_ID: ${env:SPOTIFY_CLIENT_ID}
+      SPOTIFY_SECRET_ID: ${env:SPOTIFY_SECRET_ID}
       REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/chune-refresh-${self:provider.stage}
       COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/bean-counter-${self:provider.stage}
     events:
