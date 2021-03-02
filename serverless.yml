@@ -1,5 +1,7 @@
 service: jjj-api
 frameworkVersion: '>=2.25.2 < 3.0.0'
+plugins:
+  - serverless-dotenv-plugin
 
 provider:
   name: aws
@@ -84,7 +86,7 @@ functions:
     description: "Authorizes incoming APIGW requests and verifies the token"
     memorySize: 128
     timeout: 10
-    env:
+    environment:
       JWT_VERIFY_KEY: ${env:JWT_VERIFY_KEY}
     package:
       include:
@@ -130,7 +132,7 @@ functions:
     description: "Retrieves a login URL for a chosen oauth provider"
     memorySize: 128
     timeout: 10
-    env:
+    environment:
       OAUTH_CALLBACK_HOST: "http://localhost:8080"
       GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
       GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
@@ -152,7 +154,7 @@ functions:
     description: "Provides a url for oauth providers to redirect to"
     memorySize: 128
     timeout: 10
-    env:
+    environment:
       OAUTH_CALLBACK_HOST: "http://localhost:8080"
       GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
       GOOGLE_SECRET_ID: ${env:GOOGLE_SECRET_ID}
