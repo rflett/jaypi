@@ -110,6 +110,92 @@
 					]
 				},
 				{
+					"name": "Device",
+					"item": [
+						{
+							"name": "Register Android",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"token\": \"c72KXyfkmVI:APA91bFOPpz8snvRkMDXjpi7YaMYhPBnazfznCxC9tmMkNXWLvfv-eoZaH1Z0aFywYFgAQi77FVc9U0L0TVWO9t-s7GGJswOonZl8Sc2lkaLlH7X0qWvzlCQUXTuiOmN_wuRleJzA-dG\",\r\n    \"platform\": \"android\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/user/device",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"user",
+										"device"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Register Apple",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"token\": \"309f3f8e8238246b50ef5380fda11e75ab586dc11fae31eedc0a03849fd6b16c\",\r\n    \"platform\": \"ios\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/user/device",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"user",
+										"device"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Deregister",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"endpoint\": \"arn:aws:sns:ap-southeast-2:292374005836:endpoint/GCM/google-fcm-notifications-dev/99e98b0e-292c-3859-8236-f3a9ea2e0f07\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/user/device",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"user",
+										"device"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
 					"name": "Update User",
 					"event": [
 						{

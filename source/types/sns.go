@@ -20,7 +20,7 @@ type PlatformEndpoint struct {
 	UserID *string
 }
 
-// GetPlatformEndpointFromToken
+// GetPlatformEndpointFromToken returns a PlatformEndpoint based on the device token
 func (p *PlatformApp) GetPlatformEndpointFromToken(token *string) (platformEndpoint *PlatformEndpoint, err error) {
 	input := &sns.ListEndpointsByPlatformApplicationInput{PlatformApplicationArn: aws.String(p.Arn)}
 	err = clients.SNSClient.ListEndpointsByPlatformApplicationPages(input, func(page *sns.ListEndpointsByPlatformApplicationOutput, lastPage bool) bool {
@@ -42,7 +42,7 @@ func (p *PlatformApp) GetPlatformEndpointFromToken(token *string) (platformEndpo
 	return platformEndpoint, nil
 }
 
-// CreatePlatformEndpoint
+// CreatePlatformEndpoint creates a PlatformEndpoint for a user with their token
 func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error {
 	// create the endpoint
 	snsInput := &sns.CreatePlatformEndpointInput{
@@ -92,54 +92,5 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 	}
 
 	logger.Log.Info().Str("userID", userID).Str("endpointArn", *endpoint.EndpointArn).Msg("Successfully registered SNS endpoint for user")
-	return nil
-}
-
-// DeletePlatformEndpoint
-func (p *PlatformApp) DeletePlatformEndpoint(pe *PlatformEndpoint) error {
-	// create the endpoint
-	snsInput := &sns.DeleteEndpointInput{EndpointArn: &pe.Arn}
-	_, err := clients.SNSClient.DeleteEndpoint(snsInput)
-	if err != nil {
-		logger.Log.Error().Err(err).Str("endpointArn", pe.Arn).Msg("Error deleting endpoint")
-		return err
-	}
-
-	// set fields
-	updatedAt := time.Now().UTC().Format(time.RFC3339)
-
-	// update table item query
-	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#PE": aws.String(fmt.Sprintf("%sEndpoints", p.Platform)),
-			"#UA": aws.String("updatedAt"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pe": {
-				SS: []*string{&pe.Arn},
-			},
-			":ua": {
-				S: &updatedAt,
-			},
-		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, *pe.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, *pe.UserID)),
-			},
-		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("DELETE #PE :pe SET #UA = :ua"),
-	}
-	_, err = clients.DynamoClient.UpdateItem(input)
-	if err != nil {
-		logger.Log.Error().Err(err).Str("endpointArn", pe.Arn).Msg("Error deleting endpoint arn from user")
-		return err
-	}
-
-	logger.Log.Info().Str("userID", *pe.UserID).Str("endpointArn", pe.Arn).Msg("Successfully deleted SNS endpoint for user")
 	return nil
 }

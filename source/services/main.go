@@ -12,6 +12,7 @@ import (
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
+	"time"
 )
 
 // GetGroupFromCode returns the groupID based on the group code
@@ -98,16 +99,6 @@ func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
 	return provider, nil
 }
 
-// IsPlatformEndpointEnabled returns whether the platform endpoint is enabled or not
-func IsPlatformEndpointEnabled(arn string) (bool, error) {
-	input := &sns.GetEndpointAttributesInput{EndpointArn: &arn}
-	attributes, err := clients.SNSClient.GetEndpointAttributes(input)
-	if err != nil {
-		logger.Log.Error().Err(err).Str("platformEndpointArn", arn).Msg("Error getting platform endpoint attributes")
-	}
-	return *attributes.Attributes["Enabled"] == "true", err
-}
-
 // GetAuthorizerContext returns the AuthorizerContext from the APIGatewayProxyRequestContext
 func GetAuthorizerContext(ctx events.APIGatewayProxyRequestContext) *types.AuthorizerContext {
 	return &types.AuthorizerContext{
@@ -116,4 +107,64 @@ func GetAuthorizerContext(ctx events.APIGatewayProxyRequestContext) *types.Autho
 		Name:           ctx.Authorizer["Name"].(string),
 		UserID:         ctx.Authorizer["UserID"].(string),
 	}
+}
+
+// GetPlatformEndpointAttributes returns a map of the endpoints attributes
+func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
+	input := &sns.GetEndpointAttributesInput{EndpointArn: &arn}
+	attributes, err := clients.SNSClient.GetEndpointAttributes(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("platformEndpointArn", arn).Msg("Error getting platform endpoint attributes")
+	}
+	return attributes.Attributes, err
+}
+
+// DeletePlatformEndpoint deletes a PlatformEndpoint from SNS and the users endpoints in dynamo
+func DeletePlatformEndpoint(pe *types.PlatformEndpoint) error {
+	// create the endpoint
+	snsInput := &sns.DeleteEndpointInput{EndpointArn: &pe.Arn}
+	_, err := clients.SNSClient.DeleteEndpoint(snsInput)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("endpointArn", pe.Arn).Msg("Error deleting endpoint")
+		return err
+	}
+
+	// set fields
+	updatedAt := time.Now().UTC().Format(time.RFC3339)
+
+	// update table item query
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#ANDPE": aws.String(fmt.Sprintf("%sEndpoints", types.SNSPlatformGoogle)),
+			"#IOSPE": aws.String(fmt.Sprintf("%sEndpoints", types.SNSPlatformApple)),
+			"#UA":    aws.String("updatedAt"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pe": {
+				SS: []*string{&pe.Arn},
+			},
+			":ua": {
+				S: &updatedAt,
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, *pe.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", types.UserSortKey, *pe.UserID)),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("DELETE #ANDPE :pe, #IOSPE :pe SET #UA = :ua"),
+	}
+	_, err = clients.DynamoClient.UpdateItem(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("endpointArn", pe.Arn).Msg("Error deleting endpoint arn from user")
+		return err
+	}
+
+	logger.Log.Info().Str("userID", *pe.UserID).Str("endpointArn", pe.Arn).Msg("Successfully deleted SNS endpoint for user")
+	return nil
 }

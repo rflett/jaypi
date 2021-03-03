@@ -27,13 +27,13 @@ type User struct {
 	Points           int       `json:"points"`
 	CreatedAt        string    `json:"createdAt"`
 	NickName         *string   `json:"nickName"`
-	Password         *string   `json:"-" dynamodbav:"password"`
 	AuthProvider     *string   `json:"authProvider"`
 	AuthProviderId   *string   `json:"authProviderId"`
 	AvatarUrl        *string   `json:"avatarUrl"`
 	UpdatedAt        *string   `json:"updatedAt"`
-	IOSEndpoints     *[]string `json:"iosEndpoints" dynamodbav:"stringset"`
-	AndroidEndpoints *[]string `json:"androidEndpoints" dynamodbav:"stringset"`
+	Password         *string   `json:"-" dynamodbav:"password"`
+	IOSEndpoints     *[]string `json:"-" dynamodbav:"stringset"`
+	AndroidEndpoints *[]string `json:"-" dynamodbav:"stringset"`
 }
 
 // userAuthProvider represents a user and their AuthProviderId

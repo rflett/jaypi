@@ -35,6 +35,9 @@ jobs:
           go build -ldflags="-s -w" -o bin/oauthAuthenticate  rest/oauth/authenticate/main.go
           go build -ldflags="-s -w" -o bin/oauthCallback      rest/oauth/callback/main.go
 
+          go build -ldflags="-s -w" -o bin/registerDevice     rest/device/registerDevice/main.go
+          go build -ldflags="-s -w" -o bin/deregisterDevice   rest/device/deregisterDevice/main.go
+
           go build -ldflags="-s -w" -o bin/getUser        rest/user/getUser/main.go
           go build -ldflags="-s -w" -o bin/updateUser     rest/user/updateUser/main.go
 

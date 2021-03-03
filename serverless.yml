@@ -196,6 +196,28 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  deregisterDevice:
+    handler: source/bin/deregisterDevice
+    name: deregister-device-${self:provider.stage}
+    description: "Deregister a device from a user for notifications"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/deregisterDevice
+    events:
+      - http:
+          path: user/device
+          method: delete
+          request:
+            schema:
+              application/json: ${file(schemas/device/deregister.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   getUser:
     handler: source/bin/getUser
     name: get-user-${self:provider.stage}
