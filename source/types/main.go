@@ -18,6 +18,8 @@ const (
 	AuthProviderGitHub         = "github"
 	AuthProviderFacebook       = "facebook"
 	AuthProviderInternal       = "delegator"
+	SNSPlatformGoogle          = "android"
+	SNSPlatformApple           = "ios"
 )
 
 type PlayCount struct {

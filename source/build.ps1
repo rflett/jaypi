@@ -5,6 +5,8 @@ $env:GOOS = "linux"
 go build -ldflags="-s -w" -o bin/getUser rest/user/getUser/main.go
 go build -ldflags="-s -w" -o bin/updateUser rest/user/updateUser/main.go
 
+go build -ldflags="-s -w" -o bin/registerDevice rest/device/registerDevice/main.go
+
 go build -ldflags="-s -w" -o bin/createGroup rest/group/createGroup/main.go
 go build -ldflags="-s -w" -o bin/getGroup rest/group/getGroup/main.go
 go build -ldflags="-s -w" -o bin/updateGroup rest/group/updateGroup/main.go

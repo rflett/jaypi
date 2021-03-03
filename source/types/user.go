@@ -158,9 +158,9 @@ func (u *User) Update() (status int, error error) {
 			"PK": &pk,
 			"SK": &sk,
 		},
-		ReturnValues:        aws.String("NONE"),
-		TableName:           &clients.DynamoTable,
-		UpdateExpression:    aws.String("SET #NN = :nn, #UA = :ua"),
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
 	_, err := clients.DynamoClient.UpdateItem(input)

@@ -15,13 +15,21 @@ type PlatformApp struct {
 	Platform string // Platform is the device platform, either 'ios' or 'android'
 }
 
-// GetUserIDFromToken
-func (p *PlatformApp) GetUserIDFromToken(token *string) (userID *string, error error) {
+type PlatformEndpoint struct {
+	Arn    string
+	UserID *string
+}
+
+// GetPlatformEndpointFromToken
+func (p *PlatformApp) GetPlatformEndpointFromToken(token *string) (platformEndpoint *PlatformEndpoint, err error) {
 	input := &sns.ListEndpointsByPlatformApplicationInput{PlatformApplicationArn: aws.String(p.Arn)}
-	err := clients.SNSClient.ListEndpointsByPlatformApplicationPages(input, func(page *sns.ListEndpointsByPlatformApplicationOutput, lastPage bool) bool {
+	err = clients.SNSClient.ListEndpointsByPlatformApplicationPages(input, func(page *sns.ListEndpointsByPlatformApplicationOutput, lastPage bool) bool {
 		for _, endpoint := range page.Endpoints {
 			if *endpoint.Attributes["Token"] == *token {
-				userID = endpoint.Attributes["CustomUserData"]
+				platformEndpoint = &PlatformEndpoint{
+					UserID: endpoint.Attributes["CustomUserData"],
+					Arn:    *endpoint.EndpointArn,
+				}
 				return false
 			}
 		}
@@ -31,11 +39,11 @@ func (p *PlatformApp) GetUserIDFromToken(token *string) (userID *string, error e
 		logger.Log.Error().Err(err).Str("platformAppArn", p.Arn).Msg("error listing endpoints for platform app")
 		return nil, err
 	}
-	return userID, nil
+	return platformEndpoint, nil
 }
 
 // CreatePlatformEndpoint
-func (p *PlatformApp) CreatePlatformEndpoint(token *string, userID string) error {
+func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error {
 	// create the endpoint
 	snsInput := &sns.CreatePlatformEndpointInput{
 		CustomUserData:         &userID,
@@ -50,12 +58,6 @@ func (p *PlatformApp) CreatePlatformEndpoint(token *string, userID string) error
 
 	// set fields
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
-	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, userID)),
-	}
-	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, userID)),
-	}
 
 	// update table item query
 	input := &dynamodb.UpdateItemInput{
@@ -64,22 +66,24 @@ func (p *PlatformApp) CreatePlatformEndpoint(token *string, userID string) error
 			"#UA": aws.String("updatedAt"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": &pk,
-			":sk": &sk,
 			":pe": {
-				S: endpoint.EndpointArn,
+				SS: []*string{endpoint.EndpointArn},
 			},
 			":ua": {
 				S: &updatedAt,
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"PK": &pk,
-			"SK": &sk,
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, userID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, userID)),
+			},
 		},
 		ReturnValues:     aws.String("NONE"),
 		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("ADD #PE :pe"),
+		UpdateExpression: aws.String("ADD #PE :pe SET #UA = :ua"),
 	}
 	_, err = clients.DynamoClient.UpdateItem(input)
 	if err != nil {
@@ -92,23 +96,17 @@ func (p *PlatformApp) CreatePlatformEndpoint(token *string, userID string) error
 }
 
 // DeletePlatformEndpoint
-func (p *PlatformApp) DeletePlatformEndpoint(endpointArn string, userID string) error {
+func (p *PlatformApp) DeletePlatformEndpoint(pe *PlatformEndpoint) error {
 	// create the endpoint
-	snsInput := &sns.DeleteEndpointInput{EndpointArn: &endpointArn}
+	snsInput := &sns.DeleteEndpointInput{EndpointArn: &pe.Arn}
 	_, err := clients.SNSClient.DeleteEndpoint(snsInput)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("endpointArn", endpointArn).Msg("Error deleting endpoint")
+		logger.Log.Error().Err(err).Str("endpointArn", pe.Arn).Msg("Error deleting endpoint")
 		return err
 	}
 
 	// set fields
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
-	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, userID)),
-	}
-	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, userID)),
-	}
 
 	// update table item query
 	input := &dynamodb.UpdateItemInput{
@@ -117,29 +115,31 @@ func (p *PlatformApp) DeletePlatformEndpoint(endpointArn string, userID string) 
 			"#UA": aws.String("updatedAt"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": &pk,
-			":sk": &sk,
 			":pe": {
-				S: &endpointArn,
+				SS: []*string{&pe.Arn},
 			},
 			":ua": {
 				S: &updatedAt,
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"PK": &pk,
-			"SK": &sk,
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, *pe.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, *pe.UserID)),
+			},
 		},
 		ReturnValues:     aws.String("NONE"),
 		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("DELETE #PE :pe"),
+		UpdateExpression: aws.String("DELETE #PE :pe SET #UA = :ua"),
 	}
 	_, err = clients.DynamoClient.UpdateItem(input)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("endpointArn", endpointArn).Msg("Error deleting endpoint arn from user")
+		logger.Log.Error().Err(err).Str("endpointArn", pe.Arn).Msg("Error deleting endpoint arn from user")
 		return err
 	}
 
-	logger.Log.Info().Str("userID", userID).Str("endpointArn", endpointArn).Msg("Successfully deleted SNS endpoint for user")
+	logger.Log.Info().Str("userID", *pe.UserID).Str("endpointArn", pe.Arn).Msg("Successfully deleted SNS endpoint for user")
 	return nil
 }

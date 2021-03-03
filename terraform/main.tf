@@ -101,7 +101,14 @@ resource "aws_iam_role_policy" "jaypi" {
       {
         Effect = "Allow"
         Action = [
-          "logs:*"
+          "logs:*",
+          "sns:SetEndpointAttributes",
+          "sns:GetEndpointAttributes",
+          "sns:GetPlatformApplicationAttributes",
+          "sns:CreatePlatformEndpoint",
+          "sns:DeleteEndpoint",
+          "sns:ListPlatformApplications",
+          "sns:ListEndpointsByPlatformApplication"
         ],
         Resource = [
           "*"
