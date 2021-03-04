@@ -133,6 +133,18 @@ func (u *User) Update() (status int, error error) {
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	u.UpdatedAt = &updatedAt
 
+	// group ID may be nil
+	var gi *dynamodb.AttributeValue
+	if u.GroupID == nil {
+		gi = &dynamodb.AttributeValue{
+			NULL: aws.Bool(true),
+		}
+	} else {
+		gi = &dynamodb.AttributeValue{
+			S: u.GroupID,
+		}
+	}
+
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
@@ -147,9 +159,7 @@ func (u *User) Update() (status int, error error) {
 			":ua": {
 				S: u.UpdatedAt,
 			},
-			":gi": {
-				S: u.GroupID,
-			},
+			":gi": gi,
 		},
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
@@ -564,6 +574,17 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", u.UserID).Msg("Error removing user from group")
 		return http.StatusInternalServerError, err
+	}
+
+	// remove groupID from user
+	status, err = u.GetByUserID()
+	if err != nil {
+		return status, err
+	}
+	u.GroupID = nil
+	status, err = u.Update()
+	if err != nil {
+		return status, err
 	}
 
 	logger.Log.Info().Str("groupID", groupID).Str("userID", u.UserID).Msg("User left group")

@@ -3,8 +3,7 @@
   "title": "JayPI",
   "type": "object",
   "properties": {
-    "userID": { "type": "string" },
-    "code":   { "type": "string" }
+    "code": { "type": "string" }
   },
-  "required": ["userID", "code"]
+  "required": ["code"]
 }

@@ -3,8 +3,7 @@
   "title": "JayPI",
   "type": "object",
   "properties": {
-    "name":    { "type": "string" },
-    "ownerID": { "type": "string" }
+    "name": { "type": "string" }
   },
-  "required": ["name", "ownerID"]
+  "required": ["name"]
 }

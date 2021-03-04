@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
@@ -11,12 +12,12 @@ import (
 
 // requestBody is the expected body of the create groupOld request
 type requestBody struct {
-	Name    string `json:"name"`
-	OwnerID string `json:"ownerID"`
+	Name string `json:"name"`
 }
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
@@ -27,7 +28,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// create
 	g := types.Group{
-		OwnerID: reqBody.OwnerID,
+		OwnerID: authContext.UserID,
 		Name:    reqBody.Name,
 	}
 	createStatus, createErr := g.Create()

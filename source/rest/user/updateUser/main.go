@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
@@ -16,9 +17,7 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-
-	// get userId from pathParameters
-	userID := request.PathParameters["userId"] // TODO get from request auth
+	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
@@ -27,14 +26,18 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
-	// update
-	u := types.User{
-		UserID:   userID,
-		NickName: &reqBody.NickName,
+	// get the user
+	user := types.User{UserID: authContext.UserID}
+	status, err := user.GetByUserID()
+	if err != nil {
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
 	}
-	updateStatus, updateErr := u.Update()
-	if updateErr != nil {
-		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: updateStatus}, nil
+
+	// update the user
+	user.NickName = &reqBody.NickName
+	status, err = user.Update()
+	if err != nil {
+		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
 	}
 
 	// response

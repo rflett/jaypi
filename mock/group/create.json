@@ -1,6 +1,0 @@
-{
-  "resource": "/",
-  "path": "/group",
-  "httpMethod": "POST",
-  "body": "{\"name\": \"Norto's Group\", \"ownerID\": \"5d784f0b-695e-4c5a-86c8-ffcd3ca9aacd\"}"
-}

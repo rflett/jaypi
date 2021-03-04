@@ -1,6 +1,7 @@
 package main
 
 import (
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
@@ -10,12 +11,13 @@ import (
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// get userId from pathParameters
-	userID := request.PathParameters["userId"] // TODO get from request auth
+	authContext := services.GetAuthorizerContext(request.RequestContext)
+
+	// get songID from pathParameters
 	songID := request.PathParameters["songId"]
 
 	// create
-	u := types.User{UserID: userID}
+	u := types.User{UserID: authContext.UserID}
 	deleteStatus, deleteErr := u.RemoveVote(&songID)
 	if deleteErr != nil {
 		return events.APIGatewayProxyResponse{Body: deleteErr.Error(), StatusCode: deleteStatus}, nil

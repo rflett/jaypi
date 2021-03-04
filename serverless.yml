@@ -265,7 +265,7 @@ functions:
         - ./source/bin/updateUser
     events:
       - http:
-          path: user/{userId}
+          path: user
           method: put
           request:
             schema:
@@ -350,7 +350,7 @@ functions:
         - ./source/bin/joinGroup
     events:
       - http:
-          path: group/join
+          path: group/membership
           method: post
           request:
             schema:
@@ -372,7 +372,7 @@ functions:
         - ./source/bin/leaveGroup
     events:
       - http:
-          path: group/{groupId}/user/{userId}
+          path: group/membership
           method: delete
           authorizer:
             name: authorizer
@@ -411,7 +411,7 @@ functions:
         - ./source/bin/createVote
     events:
       - http:
-          path: user/{userId}/vote
+          path: user/vote
           method: post
           request:
             schema:
@@ -433,7 +433,7 @@ functions:
         - ./source/bin/deleteVote
     events:
       - http:
-          path: user/{userId}/vote/{songId}
+          path: user/vote/{songId}
           method: delete
           authorizer:
             name: authorizer

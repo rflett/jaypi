@@ -1,8 +1,0 @@
-{
-  "resource": "/",
-  "path": "/oauth/login/",
-  "httpMethod": "GET",
-  "pathParameters": {
-    "provider": "google"
-  }
-}

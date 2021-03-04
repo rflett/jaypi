@@ -1,6 +1,0 @@
-{
-  "resource": "/",
-  "path": "/account/signup",
-  "httpMethod": "POST",
-  "body": "{\"name\": \"Ryan Flett\", \"nickName\": \"fletty\", \"email\": \"pw1@gmail.com\", \"password\": \"ryanflett\"}"
-}

@@ -12,8 +12,7 @@ import (
 
 // requestBody is the expected request body
 type requestBody struct {
-	Name    string `json:"name"`
-	OwnerID string `json:"ownerID"`
+	Name string `json:"name"`
 }
 
 // Handler is our handle on life
@@ -38,7 +37,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// update
 	g := types.Group{
 		GroupID: groupID,
-		OwnerID: reqBody.OwnerID,
+		OwnerID: authContext.UserID,
 		Name:    reqBody.Name,
 	}
 	updateStatus, updateErr := g.Update()

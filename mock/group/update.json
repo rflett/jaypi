@@ -1,9 +1,0 @@
-{
-  "resource": "/",
-  "path": "/group",
-  "httpMethod": "PUT",
-  "pathParameters": {
-    "groupId": "413807f3-0d27-4f11-a2fb-d4d0b97b2212"
-  },
-  "body": "{\"name\": \"flettel's group\", \"ownerID\": \"5d784f0b-695e-4c5a-86c8-ffcd3ca9aacd\"}"
-}

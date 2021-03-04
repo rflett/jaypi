@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
@@ -20,8 +21,7 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// get userId from pathParameters
-	userID := request.PathParameters["userId"] // TODO get from request auth
+	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
@@ -31,7 +31,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// create
-	u := types.User{UserID: userID}
+	u := types.User{UserID: authContext.UserID}
 	s := types.Song{
 		SongID: reqBody.SongID,
 		Name:   reqBody.Name,

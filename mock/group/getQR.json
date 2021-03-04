@@ -1,8 +1,0 @@
-{
-  "resource": "/",
-  "path": "/group/qr",
-  "httpMethod": "GET",
-  "pathParameters": {
-    "groupId": "413807f3-0d27-4f11-a2fb-d4d0b97b2212"
-  }
-}

@@ -11,12 +11,12 @@ import (
 
 // requestBody is the expected body of the create groupOld request
 type requestBody struct {
-	UserID string `json:"userID"` // TODO remove and get from request auth
-	Code   string `json:"code"`
+	Code string `json:"code"`
 }
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
@@ -31,7 +31,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: getGroupErr.Error(), StatusCode: http.StatusBadRequest}, nil
 	}
 
-	joinStatus, joinErr := g.AddUser(reqBody.UserID)
+	joinStatus, joinErr := g.AddUser(authContext.UserID)
 	if joinErr != nil {
 		return events.APIGatewayProxyResponse{Body: joinErr.Error(), StatusCode: joinStatus}, nil
 	}

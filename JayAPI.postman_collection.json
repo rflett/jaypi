@@ -9,107 +9,6 @@
 			"name": "User",
 			"item": [
 				{
-					"name": "Votes",
-					"item": [
-						{
-							"name": "Create Vote",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"response is ok\", function () {\r",
-											"    pm.response.to.have.status(204);\r",
-											"});\r",
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n  \"songID\": \"5gAYA4sD2wooB2TVmyqJ6s\",\r\n  \"name\": \"The Strain\",\r\n  \"artist\": \"Haken\",\r\n  \"position\": 1\r\n}\r\n",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{host}}/user/{{userID}}/vote",
-									"host": [
-										"{{host}}"
-									],
-									"path": [
-										"user",
-										"{{userID}}",
-										"vote"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Remove Vote",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"response is ok\", function () {\r",
-											"    pm.response.to.have.status(204);\r",
-											"});\r",
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{host}}/user/{{userID}}/vote/{{songID}}",
-									"host": [
-										"{{host}}"
-									],
-									"path": [
-										"user",
-										"{{userID}}",
-										"vote",
-										"{{songID}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						}
-					]
-				},
-				{
 					"name": "Device",
 					"item": [
 						{
@@ -224,13 +123,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/user/{{userID}}",
+							"raw": "{{host}}/user",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"user",
-								"{{userID}}"
+								"user"
 							]
 						}
 					},
@@ -249,6 +147,89 @@
 							"path": [
 								"user",
 								"{{userID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Vote",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"songID\": \"5gAYA4sD2wooB2TVmyqJ6s\",\r\n  \"name\": \"The Strain\",\r\n  \"artist\": \"Haken\",\r\n  \"position\": 1\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/user/vote",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
+								"vote"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Vote",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"songID\": \"5gAYA4sD2wooB2TVmyqJ6s\",\r\n  \"name\": \"The Strain\",\r\n  \"artist\": \"Haken\",\r\n  \"position\": 1\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/user/vote/{{songID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
+								"vote",
+								"{{songID}}"
 							]
 						}
 					},
@@ -297,7 +278,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"fleet's gang\",\r\n  \"ownerID\": \"{{userID}}\"\r\n}\r\n",
+							"raw": "{\r\n  \"name\": \"fletty's other gang\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -311,6 +292,47 @@
 							],
 							"path": [
 								"group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response is ok\", function () {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"flettel's group\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/group/{{groupID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"{{groupID}}"
 							]
 						}
 					},
@@ -354,54 +376,13 @@
 					"response": []
 				},
 				{
-					"name": "Update Group",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"response is ok\", function () {\r",
-									"    pm.response.to.have.status(204);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"flettel's group\",\r\n  \"ownerID\": \"{{userID}}\"\r\n}\r\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/group/{{groupID}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"group",
-								"{{groupID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Join Group",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"userID\": \"{{userID}}\",\r\n    \"code\": \"{{groupCode}}\"\r\n}",
+							"raw": "{\r\n    \"code\": \"{{groupCode}}\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -409,13 +390,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/group/join",
+							"raw": "{{host}}/group/membership",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"group",
-								"join"
+								"membership"
 							]
 						}
 					},
@@ -427,15 +408,13 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/group/{{groupID}}/user/{{userID}}",
+							"raw": "{{host}}/group/membership",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"group",
-								"{{groupID}}",
-								"user",
-								"{{userID}}"
+								"membership"
 							]
 						}
 					},
@@ -782,7 +761,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"Ryan Flett\",\r\n  \"nickName\": \"fletty\",\r\n  \"email\": \"flettel@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
+							"raw": "{\r\n  \"name\": \"Ryan Flett\",\r\n  \"nickName\": \"fletty\",\r\n  \"email\": \"ryan.flett1@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -843,7 +822,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"email\": \"flettel@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
+							"raw": "{\r\n  \"email\": \"ryan.flett1@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"

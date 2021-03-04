@@ -1,6 +1,7 @@
 package main
 
 import (
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
@@ -10,16 +11,14 @@ import (
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// get ids from pathParameters
-	groupID := request.PathParameters["groupId"]
-	userID := request.PathParameters["userId"] // TODO get from request auth
+	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// leave
-	u := types.User{UserID: userID}
+	u := types.User{UserID: authContext.UserID}
 
-	leaveStatus, leaveErr := u.LeaveGroup(groupID)
+	leaveErr := u.LeaveAllGroups()
 	if leaveErr != nil {
-		return events.APIGatewayProxyResponse{Body: leaveErr.Error(), StatusCode: leaveStatus}, nil
+		return events.APIGatewayProxyResponse{Body: leaveErr.Error(), StatusCode: http.StatusInternalServerError}, nil
 	}
 
 	// response
