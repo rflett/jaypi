@@ -79,6 +79,23 @@ functions:
           batchSize: 1
           enabled: true
 
+  # Town Crier
+  townCrier:
+    handler: source/bin/townCrier
+    name: town-crier-${self:provider.stage}
+    description: "Sends notifications out to users"
+    memorySize: 128
+    timeout: 20
+    reservedConcurrency: 100
+    package:
+      include:
+        - ./source/bin/townCrier
+    events:
+      - sqs:
+          arn: arn:aws:sqs:ap-southeast-2:292374005836:town-crier-${self:provider.stage}
+          batchSize: 1
+          enabled: false
+
   # ACCOUNT
   authorizer:
     handler: source/bin/authorizer
@@ -171,6 +188,53 @@ functions:
           method: get
 
   # USERS
+  registerDevice:
+    handler: source/bin/registerDevice
+    name: register-device-${self:provider.stage}
+    description: "Register a device with a user for notifications"
+    memorySize: 128
+    timeout: 10
+    environment:
+      GOOGLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:292374005836:app/GCM/google-fcm-notifications-dev
+      APPLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:292374005836:app/APNS/apple-apn-notifications-dev
+    package:
+      include:
+        - ./source/bin/registerDevice
+    events:
+      - http:
+          path: user/device
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/device/register.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  deregisterDevice:
+    handler: source/bin/deregisterDevice
+    name: deregister-device-${self:provider.stage}
+    description: "Deregister a device from a user for notifications"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/deregisterDevice
+    events:
+      - http:
+          path: user/device
+          method: delete
+          request:
+            schema:
+              application/json: ${file(schemas/device/deregister.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   getUser:
     handler: source/bin/getUser
     name: get-user-${self:provider.stage}

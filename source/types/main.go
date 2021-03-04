@@ -18,6 +18,8 @@ const (
 	AuthProviderGitHub         = "github"
 	AuthProviderFacebook       = "facebook"
 	AuthProviderInternal       = "delegator"
+	SNSPlatformGoogle          = "android"
+	SNSPlatformApple           = "ios"
 )
 
 type PlayCount struct {
@@ -37,8 +39,20 @@ type ScoreTakerBody struct {
 	UserID string `json:"userID"`
 }
 
+type CrierBody struct {
+	UserID string `json:"userID"`
+	*Notification
+}
+
 type LoginResponse struct {
 	User      User   `json:"user"`
 	Token     string `json:"token"`
 	TokenType string `json:"tokenType"`
+}
+
+type AuthorizerContext struct {
+	AuthProvider   string
+	AuthProviderId string
+	Name           string
+	UserID         string
 }

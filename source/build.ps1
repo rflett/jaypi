@@ -5,6 +5,9 @@ $env:GOOS = "linux"
 go build -ldflags="-s -w" -o bin/getUser rest/user/getUser/main.go
 go build -ldflags="-s -w" -o bin/updateUser rest/user/updateUser/main.go
 
+go build -ldflags="-s -w" -o bin/registerDevice rest/device/registerDevice/main.go
+go build -ldflags="-s -w" -o bin/deregisterDevice rest/device/deregisterDevice/main.go
+
 go build -ldflags="-s -w" -o bin/createGroup rest/group/createGroup/main.go
 go build -ldflags="-s -w" -o bin/getGroup rest/group/getGroup/main.go
 go build -ldflags="-s -w" -o bin/updateGroup rest/group/updateGroup/main.go
@@ -24,3 +27,4 @@ go build -ldflags="-s -w" -o bin/chuneMachine lambda/chune-machine/main.go
 go build -ldflags="-s -w" -o bin/beanCounter lambda/bean-counter/main.go
 go build -ldflags="-s -w" -o bin/scoreTaker lambda/score-taker/main.go
 go build -ldflags="-s -w" -o bin/authorizer lambda/authorizer/main.go
+go build -ldflags="-s -w" -o bin/townCrier lambda/town-crier/main.go

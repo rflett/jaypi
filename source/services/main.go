@@ -3,9 +3,11 @@ package services
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -94,4 +96,24 @@ func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
 	}
 
 	return provider, nil
+}
+
+// GetAuthorizerContext returns the AuthorizerContext from the APIGatewayProxyRequestContext
+func GetAuthorizerContext(ctx events.APIGatewayProxyRequestContext) *types.AuthorizerContext {
+	return &types.AuthorizerContext{
+		AuthProvider:   ctx.Authorizer["AuthProvider"].(string),
+		AuthProviderId: ctx.Authorizer["AuthProviderId"].(string),
+		Name:           ctx.Authorizer["Name"].(string),
+		UserID:         ctx.Authorizer["UserID"].(string),
+	}
+}
+
+// GetPlatformEndpointAttributes returns a map of the endpoints attributes
+func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
+	input := &sns.GetEndpointAttributesInput{EndpointArn: &arn}
+	attributes, err := clients.SNSClient.GetEndpointAttributes(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("platformEndpointArn", arn).Msg("Error getting platform endpoint attributes")
+	}
+	return attributes.Attributes, err
 }
