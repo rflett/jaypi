@@ -12,7 +12,7 @@ import (
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// get ids from pathParameters
 	groupID := request.PathParameters["groupId"]
-	userID := request.PathParameters["userId"]
+	userID := request.PathParameters["userId"] // TODO get from request auth
 
 	// leave
 	u := types.User{UserID: userID}

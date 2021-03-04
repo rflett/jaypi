@@ -11,7 +11,7 @@ import (
 
 // requestBody is the expected body of the create groupOld request
 type requestBody struct {
-	UserID string `json:"userID"`
+	UserID string `json:"userID"` // TODO remove and get from request auth
 	Code   string `json:"code"`
 }
 

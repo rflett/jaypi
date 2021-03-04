@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
 
@@ -17,9 +18,15 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// get groupID from pathParameters
 	groupID := request.PathParameters["groupId"]
+
+	// the user needs to be the group owner
+	if ok, _ := services.UserIsGroupOwner(authContext.UserID, groupID); !ok {
+		return events.APIGatewayProxyResponse{Body: "You have to be the group owner to do this.", StatusCode: http.StatusUnauthorized}, nil
+	}
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}

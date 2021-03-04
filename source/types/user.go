@@ -26,6 +26,7 @@ type User struct {
 	Email            string    `json:"email"`
 	Points           int       `json:"points"`
 	CreatedAt        string    `json:"createdAt"`
+	GroupID          *string   `json:"groupID"`
 	NickName         *string   `json:"nickName"`
 	AuthProvider     *string   `json:"authProvider"`
 	AuthProviderId   *string   `json:"authProviderId"`
@@ -132,36 +133,35 @@ func (u *User) Update() (status int, error error) {
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	u.UpdatedAt = &updatedAt
 
-	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-	}
-	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-	}
-
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#NN": aws.String("nickName"),
 			"#UA": aws.String("updatedAt"),
+			"#GI": aws.String("groupID"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": &pk,
-			":sk": &sk,
 			":nn": {
-				S: aws.String(*u.NickName),
+				S: u.NickName,
 			},
 			":ua": {
-				S: aws.String(*u.UpdatedAt),
+				S: u.UpdatedAt,
+			},
+			":gi": {
+				S: u.GroupID,
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"PK": &pk,
-			"SK": &sk,
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
+			},
 		},
 		ReturnValues:     aws.String("NONE"),
 		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
+		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua, #GI = :gi"),
 	}
 
 	_, err := clients.DynamoClient.UpdateItem(input)

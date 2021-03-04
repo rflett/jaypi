@@ -11,7 +11,7 @@ import (
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// get userId from pathParameters
-	userID := request.PathParameters["userId"]
+	userID := request.PathParameters["userId"] // TODO get from request auth
 	songID := request.PathParameters["songId"]
 
 	// create

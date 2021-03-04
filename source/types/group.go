@@ -96,13 +96,6 @@ func (g *Group) Update() (status int, error error) {
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	g.UpdatedAt = &updatedAt
 
-	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-	}
-	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
-	}
-
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
@@ -111,8 +104,6 @@ func (g *Group) Update() (status int, error error) {
 			"#O":  aws.String("ownerID"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": &pk,
-			":sk": &sk,
 			":ua": {
 				S: aws.String(*g.UpdatedAt),
 			},
@@ -124,12 +115,16 @@ func (g *Group) Update() (status int, error error) {
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"PK": &pk,
-			"SK": &sk,
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
+			},
 		},
 		ReturnValues:        aws.String("NONE"),
 		TableName:           &clients.DynamoTable,
-		ConditionExpression: aws.String("PK = :pk and SK = :sk and #O = :o"),
+		ConditionExpression: aws.String("#O = :o"),
 		UpdateExpression:    aws.String("SET #N = :n, #UA = :ua"),
 	}
 
@@ -225,7 +220,7 @@ func (g *Group) Get() (status int, error error) {
 func (g *Group) AddUser(userID string) (status int, error error) {
 	gm := GroupMember{
 		PK:       fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
-		SK:       fmt.Sprintf("%s#%s", "USER", userID),
+		SK:       fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
 		UserID:   userID,
 		GroupID:  g.GroupID,
 		JoinedAt: time.Now().UTC().Format(time.RFC3339),
@@ -241,20 +236,27 @@ func (g *Group) AddUser(userID string) (status int, error error) {
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(gm)
 
-	// create input
-	input := &dynamodb.PutItemInput{
+	// create putMemberInput
+	putMemberInput := &dynamodb.PutItemInput{
 		TableName:    &clients.DynamoTable,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
-
-	// add to table
-	_, err := clients.DynamoClient.PutItem(input)
-
-	// handle errors
+	_, err := clients.DynamoClient.PutItem(putMemberInput)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("userID", userID).Msg("Error adding user to group")
 		return http.StatusInternalServerError, err
+	}
+
+	// update member with new group id
+	status, err = u.GetByUserID()
+	if err != nil {
+		return status, err
+	}
+	u.GroupID = &g.GroupID
+	status, err = u.Update()
+	if err != nil {
+		return status, err
 	}
 
 	// return the group

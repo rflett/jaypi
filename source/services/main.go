@@ -117,3 +117,44 @@ func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
 	}
 	return attributes.Attributes, err
 }
+
+// UserIsInGroup returns whether a user is a member of a group
+func UserIsInGroup(userID string, groupID string) (bool, error) {
+	// input
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
+			},
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
+			},
+		},
+		KeyConditionExpression: aws.String("PK = :pk and SK = :sk"),
+		ProjectionExpression:   aws.String("userID"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	// query
+	result, err := clients.DynamoClient.Query(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", userID).Str("groupID", groupID).Msg("Unable to check if user is in group")
+		return false, err
+	}
+
+	return len(result.Items) != 0, nil
+}
+
+// UserIsGroupOwner returns whether the user is the group owner
+func UserIsGroupOwner(userID string, groupID string) (bool, error) {
+	// get the group
+	group := types.Group{GroupID: groupID}
+	_, err := group.Get()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", userID).Str("groupID", groupID).Msg("Unable to check if user is the group owner")
+		return false, err
+	}
+
+	return group.OwnerID == userID, nil
+}

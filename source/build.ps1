@@ -2,6 +2,8 @@ Get-ChildItem -Path .\bin -Include * -File -Recurse | ForEach-Object { $_.Delete
 
 $env:GOOS = "linux"
 
+gofmt -s -w .
+
 go build -ldflags="-s -w" -o bin/getUser rest/user/getUser/main.go
 go build -ldflags="-s -w" -o bin/updateUser rest/user/updateUser/main.go
 

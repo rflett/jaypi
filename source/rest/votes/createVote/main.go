@@ -21,7 +21,7 @@ type requestBody struct {
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// get userId from pathParameters
-	userID := request.PathParameters["userId"]
+	userID := request.PathParameters["userId"] // TODO get from request auth
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
