@@ -79,6 +79,23 @@ functions:
           batchSize: 1
           enabled: true
 
+  # Town Crier
+  townCrier:
+    handler: source/bin/townCrier
+    name: town-crier-${self:provider.stage}
+    description: "Sends notifications out to users"
+    memorySize: 128
+    timeout: 20
+    reservedConcurrency: 100
+    package:
+      include:
+        - ./source/bin/townCrier
+    events:
+      - sqs:
+          arn: arn:aws:sqs:ap-southeast-2:292374005836:town-crier-${self:provider.stage}
+          batchSize: 1
+          enabled: false
+
   # ACCOUNT
   authorizer:
     handler: source/bin/authorizer

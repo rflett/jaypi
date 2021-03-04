@@ -55,6 +55,7 @@ jobs:
           go build -ldflags="-s -w" -o bin/beanCounter    lambda/bean-counter/main.go
           go build -ldflags="-s -w" -o bin/scoreTaker     lambda/score-taker/main.go
           go build -ldflags="-s -w" -o bin/authorizer     lambda/authorizer/main.go
+          go build -ldflags="-s -w" -o bin/townCrier      lambda/town-crier/main.go
 
       - name: Setup Node
         uses: actions/setup-node@v1

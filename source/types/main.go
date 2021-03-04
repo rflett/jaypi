@@ -39,6 +39,11 @@ type ScoreTakerBody struct {
 	UserID string `json:"userID"`
 }
 
+type CrierBody struct {
+	UserID string `json:"userID"`
+	*Notification
+}
+
 type LoginResponse struct {
 	User      User   `json:"user"`
 	Token     string `json:"token"`

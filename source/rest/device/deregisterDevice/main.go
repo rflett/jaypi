@@ -43,7 +43,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// delete
-	err = services.DeletePlatformEndpoint(&types.PlatformEndpoint{Arn: reqBody.Endpoint, UserID: &authContext.UserID})
+	platformEndpoint := types.PlatformEndpoint{Arn: reqBody.Endpoint, UserID: &authContext.UserID}
+	err = platformEndpoint.Delete()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
 	}

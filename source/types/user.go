@@ -32,8 +32,17 @@ type User struct {
 	AvatarUrl        *string   `json:"avatarUrl"`
 	UpdatedAt        *string   `json:"updatedAt"`
 	Password         *string   `json:"-" dynamodbav:"password"`
-	IOSEndpoints     *[]string `json:"-" dynamodbav:"stringset"`
-	AndroidEndpoints *[]string `json:"-" dynamodbav:"stringset"`
+	IOSEndpoints     *[]string `json:"-" dynamodbav:"iosEndpoints"`
+	AndroidEndpoints *[]string `json:"-" dynamodbav:"androidEndpoints"`
+}
+
+// UserClaims are the custom claims that embedded into the JWT token for authentication
+type UserClaims struct {
+	Name           string  `json:"name"`
+	Picture        *string `json:"picture"`
+	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
+	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
+	jwt.StandardClaims
 }
 
 // userAuthProvider represents a user and their AuthProviderId
@@ -52,14 +61,6 @@ type songVote struct {
 	SongID   string `json:"songID"`
 	UserID   string `json:"userID"`
 	Position int    `json:"position"`
-}
-
-type UserClaims struct {
-	Name           string  `json:"name"`
-	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
-	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
-	Picture        *string `json:"picture"`
-	jwt.StandardClaims
 }
 
 // voteCount returns the number of votes a user already has
@@ -325,7 +326,7 @@ func (u *User) GetByUserID() (status int, error error) {
 	}
 
 	if len(result.Item) == 0 {
-		return http.StatusNotFound, nil
+		return http.StatusNotFound, errors.New("user not found")
 	}
 
 	// unmarshal item into struct
@@ -335,6 +336,48 @@ func (u *User) GetByUserID() (status int, error error) {
 	}
 
 	return http.StatusOK, nil
+}
+
+// GetByUserID the user from the table by their oauth id
+func (u *User) GetByAuthProviderId() (status int, error error) {
+	// input
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
+			},
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
+			},
+		},
+		IndexName:              aws.String(GSI),
+		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		ProjectionExpression:   aws.String("userID"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	// query
+	result, err := clients.DynamoClient.Query(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("providerID", *u.AuthProviderId).Msg("error querying by auth provider ID")
+		return http.StatusInternalServerError, err
+	}
+
+	if len(result.Items) == 0 {
+		return http.StatusNotFound, nil
+	}
+
+	// unmarshal item into user
+	err = dynamodbattribute.UnmarshalMap(result.Items[0], &u)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
+	}
+
+	// fill the user out
+	getUserStatus, _ := u.GetByUserID()
+	return getUserStatus, nil
 }
 
 // Exists checks to see if a user exists. You can lookup via UserID or AuthProviderId.
@@ -402,48 +445,6 @@ func (u *User) Exists(lookup string) (bool, error) {
 	// user exists
 	logger.Log.Info().Str("lookup", lookup).Msg("User already exists in table")
 	return true, nil
-}
-
-// GetByUserID the user from the table by their oauth id
-func (u *User) GetByAuthProviderId() (status int, error error) {
-	// input
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
-			},
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
-			},
-		},
-		IndexName:              aws.String(GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		ProjectionExpression:   aws.String("userID"),
-		TableName:              &clients.DynamoTable,
-	}
-
-	// query
-	result, err := clients.DynamoClient.Query(input)
-
-	// handle errors
-	if err != nil {
-		logger.Log.Error().Err(err).Str("providerID", *u.AuthProviderId).Msg("error querying by auth provider ID")
-		return http.StatusInternalServerError, err
-	}
-
-	if len(result.Items) == 0 {
-		return http.StatusNotFound, nil
-	}
-
-	// unmarshal item into user
-	err = dynamodbattribute.UnmarshalMap(result.Items[0], &u)
-	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
-	}
-
-	// fill the user out
-	getUserStatus, _ := u.GetByUserID()
-	return getUserStatus, nil
 }
 
 // NewAuthProvider creates a new mapping of a user to their auth provider
