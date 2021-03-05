@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
@@ -12,6 +13,7 @@ import (
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
+	"net/http"
 )
 
 // GetGroupFromCode returns the groupID based on the group code
@@ -157,4 +159,26 @@ func UserIsGroupOwner(userID string, groupID string) (bool, error) {
 	}
 
 	return group.OwnerID == userID, nil
+}
+
+// ReturnNoContent returns an APIGW response with no content
+func ReturnNoContent() (events.APIGatewayProxyResponse, error) {
+	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+}
+
+// ReturnJSON returns a struct in an APIGW response body
+func ReturnJSON(body interface{}, status int) (events.APIGatewayProxyResponse, error) {
+	headers := map[string]string{"Content-Type": "application/json"}
+	marshalledBody, _ := json.Marshal(body)
+	return events.APIGatewayProxyResponse{Body: string(marshalledBody), StatusCode: status, Headers: headers}, nil
+}
+
+// ReturnError returns an error from APIGW in a standard format
+func ReturnError(err error, status int) (events.APIGatewayProxyResponse, error) {
+	logger.Log.Info().Str("status", string(rune(status))).Str("err", err.Error()).Msg("Returning error from APIGW")
+	body := map[string]interface{}{
+		"success": false,
+		"error":   err.Error(),
+	}
+	return ReturnJSON(body, status)
 }

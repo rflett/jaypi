@@ -17,31 +17,30 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var err error
+	var status int
+
 	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	err = json.Unmarshal([]byte(request.Body), &reqBody)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// get the user
 	user := types.User{UserID: authContext.UserID}
-	status, err := user.GetByUserID()
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
+	if status, err = user.GetByUserID(); err != nil {
+		return services.ReturnError(err, status)
 	}
 
 	// update the user
 	user.NickName = &reqBody.NickName
-	status, err = user.Update()
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
+	if status, err = user.Update(); err != nil {
+		return services.ReturnError(err, status)
 	}
-
-	// response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	return services.ReturnNoContent()
 }
 
 func main() {

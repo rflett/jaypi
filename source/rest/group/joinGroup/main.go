@@ -16,30 +16,27 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var err error
+	var status int
+
 	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	err = json.Unmarshal([]byte(request.Body), &reqBody)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// join
-	g, getGroupErr := services.GetGroupFromCode(reqBody.Code)
-	if getGroupErr != nil {
-		return events.APIGatewayProxyResponse{Body: getGroupErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	group, err := services.GetGroupFromCode(reqBody.Code)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
-
-	joinStatus, joinErr := g.AddUser(authContext.UserID)
-	if joinErr != nil {
-		return events.APIGatewayProxyResponse{Body: joinErr.Error(), StatusCode: joinStatus}, nil
+	if status, err = group.AddUser(authContext.UserID); err != nil {
+		return services.ReturnError(err, status)
 	}
-
-	// response
-	responseBody, _ := json.Marshal(g)
-	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusOK, Headers: headers}, nil
+	return services.ReturnJSON(group, http.StatusOK)
 }
 
 func main() {

@@ -21,31 +21,31 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var err error
+	var status int
+
 	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	err = json.Unmarshal([]byte(request.Body), &reqBody)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// create
-	u := types.User{UserID: authContext.UserID}
-	s := types.Song{
+	user := types.User{UserID: authContext.UserID}
+	song := types.Song{
 		SongID: reqBody.SongID,
 		Name:   reqBody.Name,
 		Album:  reqBody.Album,
 		Artist: reqBody.Artist,
 	}
 
-	createStatus, createErr := u.AddVote(&s, reqBody.Position)
-	if createErr != nil {
-		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: createStatus}, nil
+	if status, err = user.AddVote(&song, reqBody.Position); err != nil {
+		return services.ReturnError(err, status)
 	}
-
-	// response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	return services.ReturnNoContent()
 }
 
 func main() {

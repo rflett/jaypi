@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"jjj.rflett.com/jjj-api/services"
@@ -36,37 +37,37 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	err := json.Unmarshal([]byte(request.Body), &reqBody)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// get app for the platform
 	platformApp, exists := platforms[reqBody.Platform]
 	if !exists {
-		return events.APIGatewayProxyResponse{Body: errors.New("unsupported platform").Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(errors.New(fmt.Sprintf("Unsupported platform %s", reqBody.Platform)), http.StatusBadRequest)
 	}
 
 	// get the user associated with the token
 	platformEndpoint, err := platformApp.GetPlatformEndpointFromToken(&reqBody.Token)
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// if the token is in use with an endpoint already then delete the endpoint
 	if platformEndpoint != nil && *platformEndpoint.UserID != authContext.UserID {
 		err = platformEndpoint.Delete()
 		if err != nil {
-			return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+			return services.ReturnError(err, http.StatusBadRequest)
 		}
 	}
 
 	// create the endpoint
 	err = platformApp.CreatePlatformEndpoint(authContext.UserID, &reqBody.Token)
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	return services.ReturnNoContent()
 }
 
 func main() {

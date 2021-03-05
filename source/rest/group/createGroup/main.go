@@ -17,29 +17,27 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var err error
+	var status int
+
 	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	err = json.Unmarshal([]byte(request.Body), &reqBody)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// create
-	g := types.Group{
+	group := types.Group{
 		OwnerID: authContext.UserID,
 		Name:    reqBody.Name,
 	}
-	createStatus, createErr := g.Create()
-	if createErr != nil {
-		return events.APIGatewayProxyResponse{Body: createErr.Error(), StatusCode: createStatus}, nil
+	if status, err = group.Create(); err != nil {
+		return services.ReturnError(err, status)
 	}
-
-	// response
-	responseBody, _ := json.Marshal(g)
-	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: http.StatusCreated, Headers: headers}, nil
+	return services.ReturnJSON(group, http.StatusCreated)
 }
 
 func main() {

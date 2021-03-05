@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"jjj.rflett.com/jjj-api/services"
@@ -17,19 +18,16 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// check user is in the group
 	if ok, _ := services.UserIsInGroup(authContext.UserID, groupID); !ok {
-		return events.APIGatewayProxyResponse{Body: "You have to a member of the group to do this.", StatusCode: http.StatusUnauthorized}, nil
+		return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusUnauthorized)
 	}
 
 	// get group QR code
-	g := types.Group{GroupID: groupID}
-	qr, err := g.GetQRCode()
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusInternalServerError}, nil
+	group := types.Group{GroupID: groupID}
+	if qr, err := group.GetQRCode(); err != nil {
+		return services.ReturnError(err, http.StatusInternalServerError)
+	} else {
+		return services.ReturnJSON(qr, http.StatusOK)
 	}
-
-	// response
-	headers := map[string]string{"Content-Type": "application/text"}
-	return events.APIGatewayProxyResponse{Body: qr, StatusCode: http.StatusOK, Headers: headers}, nil
 }
 
 func main() {

@@ -17,7 +17,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Failed to retrieve an oauth provider by name")
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// Have the provider, now redirect them to the login URL.

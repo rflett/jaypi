@@ -23,7 +23,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	reqBody := requestBody{}
 	err := json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	loginUser := types.User{
@@ -35,28 +35,28 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// confirm user exists
 	exists, err := loginUser.Exists("AuthProviderId")
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 	if !exists {
-		return events.APIGatewayProxyResponse{Body: errors.New("Email or password are incorrect").Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(errors.New("Email or password are incorrect"), http.StatusBadRequest)
 	}
 
 	// get the user
-	getStatus, err := loginUser.GetByAuthProviderId()
+	status, err := loginUser.GetByAuthProviderId()
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: getStatus}, nil
+		return services.ReturnError(err, status)
 	}
 
 	// check password
 	if !services.ComparePasswords(*loginUser.Password, reqBody.Password) {
 		logger.Log.Warn().Str("userID", loginUser.UserID).Msg("Passwords don't match")
-		return events.APIGatewayProxyResponse{Body: errors.New("password is incorrect").Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(errors.New("Email or password are incorrect"), http.StatusBadRequest)
 	}
 
 	// create token
 	token, err := loginUser.CreateToken()
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusInternalServerError}, nil
+		return services.ReturnError(err, http.StatusInternalServerError)
 	}
 
 	// response
@@ -65,9 +65,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		Token:     token,
 		TokenType: "Bearer",
 	}
-	body, _ := json.Marshal(loginResponse)
-	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(body), StatusCode: http.StatusOK, Headers: headers}, nil
+	return services.ReturnJSON(loginResponse, http.StatusOK)
 }
 
 func main() {

@@ -23,32 +23,32 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	reqBody := requestBody{}
 	err := json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// get attributes
 	attributes, err := services.GetPlatformEndpointAttributes(reqBody.Endpoint)
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// you can only delete your own endpoint
 	if *attributes["CustomUserData"] != authContext.UserID {
-		return events.APIGatewayProxyResponse{Body: errors.New("endpoint must be owned by user").Error(), StatusCode: http.StatusUnauthorized}, nil
+		return services.ReturnError(errors.New("Cannot deregister endpoint not associated with this user"), http.StatusUnauthorized)
 	}
 
 	// you can only delete an endpoint that's still enabled
 	if *attributes["Enabled"] != "true" {
-		return events.APIGatewayProxyResponse{Body: errors.New("endpoint must be enabled").Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(errors.New("Cannot deregister disabled endpoint"), http.StatusBadRequest)
 	}
 
 	// delete
 	platformEndpoint := types.PlatformEndpoint{Arn: reqBody.Endpoint, UserID: &authContext.UserID}
 	err = platformEndpoint.Delete()
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusBadRequest}, nil
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	return services.ReturnNoContent()
 }
 
 func main() {

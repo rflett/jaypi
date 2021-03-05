@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
@@ -17,6 +18,9 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var err error
+	var status int
+
 	authContext := services.GetAuthorizerContext(request.RequestContext)
 
 	// get groupID from pathParameters
@@ -24,29 +28,26 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// the user needs to be the group owner
 	if ok, _ := services.UserIsGroupOwner(authContext.UserID, groupID); !ok {
-		return events.APIGatewayProxyResponse{Body: "You have to be the group owner to do this.", StatusCode: http.StatusUnauthorized}, nil
+		return services.ReturnError(errors.New("You have to be the group owner to do this"), http.StatusUnauthorized)
 	}
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
-	jsonErr := json.Unmarshal([]byte(request.Body), &reqBody)
-	if jsonErr != nil {
-		return events.APIGatewayProxyResponse{Body: jsonErr.Error(), StatusCode: http.StatusBadRequest}, nil
+	err = json.Unmarshal([]byte(request.Body), &reqBody)
+	if err != nil {
+		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// update
-	g := types.Group{
+	group := types.Group{
 		GroupID: groupID,
 		OwnerID: authContext.UserID,
 		Name:    reqBody.Name,
 	}
-	updateStatus, updateErr := g.Update()
-	if updateErr != nil {
-		return events.APIGatewayProxyResponse{Body: updateErr.Error(), StatusCode: updateStatus}, nil
+	if status, err = group.Update(); err != nil {
+		return services.ReturnError(err, status)
 	}
-
-	// response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	return services.ReturnNoContent()
 }
 
 func main() {

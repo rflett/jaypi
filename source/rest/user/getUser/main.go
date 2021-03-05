@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"jjj.rflett.com/jjj-api/services"
@@ -18,23 +18,20 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get user
 	user := types.User{UserID: userID}
-	status, err := user.GetByUserID()
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: status}, nil
+	if status, err := user.GetByUserID(); err != nil {
+		return services.ReturnError(err, status)
 	}
 
 	// users can get themselves without doing the group check
 	if authContext.UserID != userID {
 		// check user is in the group
 		if ok, _ := services.UserIsInGroup(authContext.UserID, *user.GroupID); !ok {
-			return events.APIGatewayProxyResponse{Body: "You have to a member of the group to do this.", StatusCode: http.StatusUnauthorized}, nil
+			return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusUnauthorized)
 		}
 	}
 
 	// response
-	responseBody, _ := json.Marshal(user)
-	headers := map[string]string{"Content-Type": "application/json"}
-	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: status, Headers: headers}, nil
+	return services.ReturnJSON(user, http.StatusOK)
 }
 
 func main() {

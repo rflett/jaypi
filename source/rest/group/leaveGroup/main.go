@@ -12,17 +12,11 @@ import (
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	authContext := services.GetAuthorizerContext(request.RequestContext)
-
-	// leave
-	u := types.User{UserID: authContext.UserID}
-
-	leaveErr := u.LeaveAllGroups()
-	if leaveErr != nil {
-		return events.APIGatewayProxyResponse{Body: leaveErr.Error(), StatusCode: http.StatusInternalServerError}, nil
+	user := types.User{UserID: authContext.UserID}
+	if err := user.LeaveAllGroups(); err != nil {
+		return services.ReturnError(err, http.StatusInternalServerError)
 	}
-
-	// response
-	return events.APIGatewayProxyResponse{Body: "", StatusCode: http.StatusNoContent}, nil
+	return services.ReturnNoContent()
 }
 
 func main() {

@@ -227,7 +227,7 @@ func (u *User) AddVote(s *Song, position int) (status int, error error) {
 	}
 	if vc >= 10 {
 		tooManyCountsErr := errors.New("user already has 10 song votes")
-		logger.Log.Error().Err(tooManyCountsErr).Str("userID", u.UserID).Msg("User has maxxed out their votes")
+		logger.Log.Error().Err(tooManyCountsErr).Str("userID", u.UserID).Msg("User has maxed out their votes")
 		return http.StatusBadRequest, tooManyCountsErr
 	}
 
