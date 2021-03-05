@@ -164,6 +164,10 @@ functions:
       - http:
           path: oauth/{provider}/login
           method: get
+          request:
+            parameters:
+              paths:
+                provider: true
 
   oauthCallback:
     handler: source/bin/oauthCallback
@@ -186,6 +190,10 @@ functions:
       - http:
           path: oauth/{provider}/redirect
           method: get
+          request:
+            parameters:
+              paths:
+                provider: true
 
   # USERS
   registerDevice:
@@ -248,6 +256,10 @@ functions:
       - http:
           path: user/{userId}
           method: get
+          request:
+            parameters:
+              paths:
+                userId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
@@ -311,6 +323,10 @@ functions:
       - http:
           path: group/{groupId}
           method: get
+          request:
+            parameters:
+              paths:
+                groupId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
@@ -331,6 +347,9 @@ functions:
           path: group/{groupId}
           method: put
           request:
+            parameters:
+              paths:
+                groupId: true
             schema:
               application/json: ${file(schemas/group/update.json)}
           authorizer:
@@ -393,6 +412,10 @@ functions:
       - http:
           path: group/{groupId}/qr
           method: get
+          request:
+            parameters:
+              paths:
+                groupId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
@@ -435,6 +458,10 @@ functions:
       - http:
           path: user/vote/{songId}
           method: delete
+          request:
+            parameters:
+              paths:
+                songId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
