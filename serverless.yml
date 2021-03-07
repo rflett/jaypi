@@ -334,6 +334,29 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  getGroupMembers:
+    handler: source/bin/getGroupMembers
+    name: get-group-members-${self:provider.stage}
+    description: "Get the members of a group"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/getGroupMembers
+    events:
+      - http:
+          path: group/{groupId}/members
+          method: get
+          request:
+            parameters:
+              paths:
+                groupId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   updateGroup:
     handler: source/bin/updateGroup
     name: update-group-${self:provider.stage}

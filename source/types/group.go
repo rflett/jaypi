@@ -37,15 +37,6 @@ type GroupCode struct {
 	Code    string `json:"code"`
 }
 
-// GroupMember is a member of a group
-type GroupMember struct {
-	PK       string `json:"-" dynamodbav:"PK"`
-	SK       string `json:"-" dynamodbav:"SK"`
-	UserID   string `json:"userID"`
-	GroupID  string `json:"groupID"`
-	JoinedAt string `json:"joinedAt"`
-}
-
 // Create the group and save it to the database
 func (g *Group) Create() (status int, error error) {
 	// set fields
@@ -217,45 +208,43 @@ func (g *Group) Get() (status int, error error) {
 }
 
 // AddUser a user to a group
-func (g *Group) AddUser(userID string) (status int, error error) {
-	gm := GroupMember{
-		PK:       fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
-		SK:       fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
-		UserID:   userID,
-		GroupID:  g.GroupID,
-		JoinedAt: time.Now().UTC().Format(time.RFC3339),
+func (g *Group) AddUser(userID string) (status int, err error) {
+	member := User{
+		PK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
+		SK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
+		GroupID: &g.GroupID,
+		UserID:  userID,
 	}
 
-	// leave any other groups (should only ever be one other group membership)
-	u := User{UserID: userID}
-	leaveErr := u.LeaveAllGroups()
-	if leaveErr != nil {
-		return http.StatusInternalServerError, leaveErr
+	// get the user
+	user := User{UserID: userID}
+	if status, err = user.GetByUserID(); err != nil {
+		return status, err
 	}
 
-	// create item
-	av, _ := dynamodbattribute.MarshalMap(gm)
+	// leave their current group
+	if user.GroupID != nil {
+		if status, err = user.LeaveGroup(); err != nil {
+			return status, err
+		}
+	}
 
-	// create putMemberInput
+	// create the new group membership
+	av, _ := dynamodbattribute.MarshalMap(member)
 	putMemberInput := &dynamodb.PutItemInput{
 		TableName:    &clients.DynamoTable,
 		Item:         av,
 		ReturnValues: aws.String("NONE"),
 	}
-	_, err := clients.DynamoClient.PutItem(putMemberInput)
+	_, err = clients.DynamoClient.PutItem(putMemberInput)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("userID", userID).Msg("Error adding user to group")
 		return http.StatusInternalServerError, err
 	}
 
 	// update member with new group id
-	status, err = u.GetByUserID()
-	if err != nil {
-		return status, err
-	}
-	u.GroupID = &g.GroupID
-	status, err = u.Update()
-	if err != nil {
+	user.GroupID = &g.GroupID
+	if status, err = user.Update(); err != nil {
 		return status, err
 	}
 
@@ -363,6 +352,46 @@ func (g *Group) NewCode() error {
 	logger.Log.Info().Str("groupID", g.GroupID).Msg("Successfully added code to table")
 	g.Code = code
 	return nil
+}
+
+// GetMembers returns all the members of a group
+func (g *Group) GetMembers() ([]User, error) {
+	// get the users in the group
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			":pk": {
+				S: aws.String("USER#"),
+			},
+		},
+		IndexName:              aws.String(GSI),
+		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		ProjectionExpression:   aws.String("userID"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	groupMembers, err := clients.DynamoClient.Query(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error getting group members")
+		return []User{}, err
+	}
+
+	var users []User = nil
+	for _, member := range groupMembers.Items {
+		user := User{}
+		if err = dynamodbattribute.UnmarshalMap(member, &user); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal group member to user")
+			continue
+		}
+		if _, err = user.GetByUserID(); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to get user")
+			continue
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 // ValidateCode checks if a code already exists against a group and returns an error if it does

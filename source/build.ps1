@@ -12,6 +12,7 @@ go build -ldflags="-s -w" -o bin/deregisterDevice rest/device/deregisterDevice/m
 
 go build -ldflags="-s -w" -o bin/createGroup rest/group/createGroup/main.go
 go build -ldflags="-s -w" -o bin/getGroup rest/group/getGroup/main.go
+go build -ldflags="-s -w" -o bin/getGroupMembers rest/group/getGroupMembers/main.go
 go build -ldflags="-s -w" -o bin/updateGroup rest/group/updateGroup/main.go
 go build -ldflags="-s -w" -o bin/joinGroup rest/group/joinGroup/main.go
 go build -ldflags="-s -w" -o bin/leaveGroup rest/group/leaveGroup/main.go

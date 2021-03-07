@@ -154,7 +154,7 @@ func (u *User) Update() (status int, error error) {
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":nn": {
-				S: u.NickName,
+				S: aws.String(*u.NickName),
 			},
 			":ua": {
 				S: u.UpdatedAt,
@@ -292,6 +292,27 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 	logger.Log.Info().Str("songID", *songID).Str("userID", u.UserID).Msg("Removed song vote from user")
 	return http.StatusNoContent, nil
 }
+
+// GetVotes returns a users votes
+//func (u *User) GetVotes() error {
+//	// get the users in the group
+//	input := &dynamodb.QueryInput{
+//		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+//			":sk": {
+//				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+//			},
+//			":pk": {
+//				S: aws.String("SONG#"),
+//			},
+//		},
+//		IndexName:              aws.String(GSI),
+//		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+//		ProjectionExpression:   aws.String("songID"),
+//		TableName:              &clients.DynamoTable,
+//	}
+//
+//	userVotes, err := clients.DynamoClient.Query(input)
+//}
 
 // GetByUserID the user from the table
 func (u *User) GetByUserID() (status int, error error) {
@@ -517,51 +538,16 @@ func (u *User) UpdatePoints(points int) error {
 	return nil
 }
 
-// LeaveAllGroups removes a member from all of their groups
-func (u *User) LeaveAllGroups() error {
-	// find any other groups to leave
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", "GROUP")),
-			},
-		},
-		IndexName:              aws.String(GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		ProjectionExpression:   aws.String("groupID"),
-		TableName:              &clients.DynamoTable,
-	}
-	groupMemberships, queryErr := clients.DynamoClient.Query(input)
-	if queryErr != nil {
-		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting users groups")
-		return queryErr
-	}
-
-	// for each group membership that the user has, leave those groups
-	for _, membership := range groupMemberships.Items {
-		gm := GroupMember{}
-		unMarshErr := dynamodbattribute.UnmarshalMap(membership, &gm)
-		if unMarshErr != nil {
-			logger.Log.Error().Err(unMarshErr).Str("userID", u.UserID).Msg("error unmarshalling group member to groupMember")
-		}
-		_, _ = u.LeaveGroup(gm.GroupID)
-	}
-	return nil
-}
-
 // LeaveGroup removes the User from a Group
-func (u *User) LeaveGroup(groupID string) (status int, error error) {
+func (u *User) LeaveGroup() (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", "GROUP", groupID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, *u.GroupID)),
 			},
 		},
 		TableName: &clients.DynamoTable,
@@ -572,22 +558,18 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", u.UserID).Msg("Error removing user from group")
+		logger.Log.Error().Err(err).Str("groupID", *u.GroupID).Str("userID", u.UserID).Msg("Error removing user from group")
 		return http.StatusInternalServerError, err
 	}
 
-	// remove groupID from user
-	status, err = u.GetByUserID()
-	if err != nil {
-		return status, err
-	}
+	// remove groupID attribute from the user
+	logger.Log.Info().Str("userID", u.UserID).Str("groupID", *u.GroupID).Msg("User left group")
 	u.GroupID = nil
-	status, err = u.Update()
-	if err != nil {
+	if status, err = u.Update(); err != nil {
 		return status, err
 	}
 
-	logger.Log.Info().Str("groupID", groupID).Str("userID", u.UserID).Msg("User left group")
+	logger.Log.Info().Str("userID", u.UserID).Msg("User left group")
 	return http.StatusNoContent, nil
 }
 

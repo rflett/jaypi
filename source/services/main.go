@@ -126,10 +126,10 @@ func UserIsInGroup(userID string, groupID string) (bool, error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
+				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
 			},
 			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
+				S: aws.String(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
 			},
 		},
 		KeyConditionExpression: aws.String("PK = :pk and SK = :sk"),
