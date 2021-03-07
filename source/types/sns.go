@@ -23,7 +23,7 @@ type PlatformEndpoint struct {
 
 // GetPlatformEndpointFromToken returns a PlatformEndpoint based on the device token
 func (p *PlatformApp) GetPlatformEndpointFromToken(token *string) (platformEndpoint *PlatformEndpoint, err error) {
-	input := &sns.ListEndpointsByPlatformApplicationInput{PlatformApplicationArn: aws.String(p.Arn)}
+	input := &sns.ListEndpointsByPlatformApplicationInput{PlatformApplicationArn: &p.Arn}
 	err = clients.SNSClient.ListEndpointsByPlatformApplicationPages(input, func(page *sns.ListEndpointsByPlatformApplicationOutput, lastPage bool) bool {
 		for _, endpoint := range page.Endpoints {
 			if *endpoint.Attributes["Token"] == *token {

@@ -41,7 +41,7 @@ func queueForCounter(songID *string) error {
 	input := &sqs.SendMessageInput{
 		DelaySeconds: aws.Int64(0),
 		MessageBody:  aws.String(string(mb)),
-		QueueUrl:     aws.String(beanCounterQueue),
+		QueueUrl:     &beanCounterQueue,
 	}
 
 	// send the message to the queue
@@ -77,7 +77,7 @@ func queueForSelf(s *types.Song, nextUpdated *time.Time) error {
 	input := &sqs.SendMessageInput{
 		DelaySeconds: &delaySeconds,
 		MessageBody:  aws.String(string(mb)),
-		QueueUrl:     aws.String(chuneRefreshQueue),
+		QueueUrl:     &chuneRefreshQueue,
 	}
 
 	// send the message to the queue

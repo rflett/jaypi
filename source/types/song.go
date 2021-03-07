@@ -137,7 +137,7 @@ func (s *Song) Played() error {
 			":pk": &pk,
 			":sk": &sk,
 			":pa": {
-				S: aws.String(*s.PlayedAt),
+				S: s.PlayedAt,
 			},
 			":pp": {
 				N: currentPlayCount,

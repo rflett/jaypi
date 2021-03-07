@@ -105,13 +105,13 @@ func (g *Group) Update() (status int, error error) {
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":ua": {
-				S: aws.String(*g.UpdatedAt),
+				S: g.UpdatedAt,
 			},
 			":n": {
-				S: aws.String(g.Name),
+				S: &g.Name,
 			},
 			":o": {
-				S: aws.String(g.OwnerID),
+				S: &g.OwnerID,
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
