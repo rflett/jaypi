@@ -278,7 +278,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"fletty's other gang\"\r\n}\r\n",
+							"raw": "{\r\n  \"name\": \"FleetStreet\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -351,6 +351,31 @@
 							"path": [
 								"group",
 								"{{groupID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Members",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/group/{{groupID}}/members?withVotes=true",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"group",
+								"{{groupID}}",
+								"members"
+							],
+							"query": [
+								{
+									"key": "withVotes",
+									"value": "true"
+								}
 							]
 						}
 					},
