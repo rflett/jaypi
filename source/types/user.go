@@ -31,6 +31,7 @@ type User struct {
 	AuthProvider     *string   `json:"authProvider"`
 	AuthProviderId   *string   `json:"authProviderId"`
 	AvatarUrl        *string   `json:"avatarUrl"`
+	Votes            *[]Song   `json:"votes"`
 	UpdatedAt        *string   `json:"updatedAt"`
 	Password         *string   `json:"-" dynamodbav:"password"`
 	IOSEndpoints     *[]string `json:"-" dynamodbav:"iosEndpoints"`
@@ -294,25 +295,43 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 }
 
 // GetVotes returns a users votes
-//func (u *User) GetVotes() error {
-//	// get the users in the group
-//	input := &dynamodb.QueryInput{
-//		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-//			":sk": {
-//				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-//			},
-//			":pk": {
-//				S: aws.String("SONG#"),
-//			},
-//		},
-//		IndexName:              aws.String(GSI),
-//		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-//		ProjectionExpression:   aws.String("songID"),
-//		TableName:              &clients.DynamoTable,
-//	}
-//
-//	userVotes, err := clients.DynamoClient.Query(input)
-//}
+func (u *User) GetVotes() ([]Song, error) {
+	// get the users in the group
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			":sk": {
+				S: aws.String("SONG#"),
+			},
+		},
+		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
+		ProjectionExpression:   aws.String("songID"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	userVotes, err := clients.DynamoClient.Query(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting users votes")
+		return []Song{}, err
+	}
+
+	var votes []Song = nil
+	for _, vote := range userVotes.Items {
+		song := Song{}
+		if err = dynamodbattribute.UnmarshalMap(vote, &song); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to song")
+			continue
+		}
+		if err = song.Get(); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to get song")
+			continue
+		}
+		votes = append(votes, song)
+	}
+	return votes, nil
+}
 
 // GetByUserID the user from the table
 func (u *User) GetByUserID() (status int, error error) {

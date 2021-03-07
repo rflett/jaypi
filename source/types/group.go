@@ -355,7 +355,7 @@ func (g *Group) NewCode() error {
 }
 
 // GetMembers returns all the members of a group
-func (g *Group) GetMembers() ([]User, error) {
+func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	// get the users in the group
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -388,6 +388,13 @@ func (g *Group) GetMembers() ([]User, error) {
 		if _, err = user.GetByUserID(); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to get user")
 			continue
+		}
+		if withVotes {
+			// get the members votes
+			votes, voteErr := user.GetVotes()
+			if voteErr == nil {
+				user.Votes = &votes
+			}
 		}
 		users = append(users, user)
 	}
