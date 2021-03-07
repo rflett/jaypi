@@ -12,11 +12,8 @@ import (
 
 // requestBody is the expected body of the request
 type requestBody struct {
-	SongID   string `json:"songID"`
-	Name     string `json:"name"`
-	Album    string `json:"album"`
-	Artist   string `json:"artist"`
-	Position int    `json:"position"`
+	Song     types.Song `json:"song"`
+	Position int        `json:"position"`
 }
 
 // Handler is our handle on life
@@ -33,16 +30,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
-	// create
+	// add the vote to the user
 	user := types.User{UserID: authContext.UserID}
-	song := types.Song{
-		SongID: reqBody.SongID,
-		Name:   reqBody.Name,
-		Album:  reqBody.Album,
-		Artist: reqBody.Artist,
-	}
-
-	if status, err = user.AddVote(&song, reqBody.Position); err != nil {
+	if status, err = user.AddVote(&reqBody.Song, reqBody.Position); err != nil {
 		return services.ReturnError(err, status)
 	}
 	return services.ReturnNoContent()

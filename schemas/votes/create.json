@@ -3,10 +3,29 @@
   "title": "JayPI",
   "type": "object",
   "properties": {
-    "songID":   { "type": "string" },
-    "name":     { "type": "string" },
-    "artist":   { "type": "string" },
-    "position": { "type": "integer" }
+    "position": {
+      "type": "integer"
+    },
+    "song": {
+      "type": "object",
+      "properties": {
+        "songID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "album": {
+          "type": "string"
+        },
+        "artist": {
+          "type": "string"
+        },
+        "artwork": {
+          "type": "array"
+        }
+      }
+    }
   },
-  "required": ["songID", "name", "artist", "position"]
+  "required": ["position", "song"]
 }

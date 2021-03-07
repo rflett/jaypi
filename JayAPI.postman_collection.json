@@ -173,7 +173,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"songID\": \"5gAYA4sD2wooB2TVmyqJ6s\",\r\n  \"name\": \"The Strain\",\r\n  \"artist\": \"Haken\",\r\n  \"position\": 1\r\n}\r\n",
+							"raw": "{\r\n    \"position\": 1,\r\n    \"song\": {\r\n        \"songID\": \"294Qb8EGfUjmZhaxROiLiV\",\r\n        \"name\": \"Bleak\",\r\n        \"album\": \"Blackwater Park\",\r\n        \"artist\": \"Opeth\",\r\n        \"artwork\": [\r\n            {\r\n                \"url\": \"https://i.scdn.co/image/ab67616d0000b273f32111c6eea621e6468dccbc\",\r\n                \"width\": 640,\r\n                \"height\": 640\r\n            },\r\n            {\r\n                \"url\": \"https://i.scdn.co/image/ab67616d00001e02f32111c6eea621e6468dccbc\",\r\n                \"width\": 300,\r\n                \"height\": 300\r\n            },\r\n            {\r\n                \"url\": \"https://i.scdn.co/image/ab67616d00004851f32111c6eea621e6468dccbc\",\r\n                \"width\": 64,\r\n                \"height\": 64\r\n            }\r\n        ]\r\n    }\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -423,195 +423,6 @@
 			]
 		},
 		{
-			"name": "Spotify",
-			"item": [
-				{
-					"name": "Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// pm.test(\"response is ok\", function () {\r",
-									"//     pm.response.to.have.status(201);\r",
-									"// });\r",
-									"\r",
-									"pm.test(\"response must be valid and have a body\", function () {\r",
-									"     pm.response.to.be.json;\r",
-									"});\r",
-									"\r",
-									"var jsonData = pm.response.json();\r",
-									"\r",
-									"pm.test(\"Check access_token is in response\", function () {\r",
-									"    pm.expect(jsonData).to.have.property('access_token');\r",
-									"});\r",
-									"pm.environment.set(\"spotifyAccessToken\", jsonData.access_token);\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Basic {{spotifyClientAuth}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "urlencoded",
-							"urlencoded": [
-								{
-									"key": "grant_type",
-									"value": "client_credentials",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "https://accounts.spotify.com/api/token",
-							"protocol": "https",
-							"host": [
-								"accounts",
-								"spotify",
-								"com"
-							],
-							"path": [
-								"api",
-								"token"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Search",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "https://api.spotify.com/v1/search?q=Something+About+Being+Sixteen+Teenage+Joans&type=track&limit=3",
-							"protocol": "https",
-							"host": [
-								"api",
-								"spotify",
-								"com"
-							],
-							"path": [
-								"v1",
-								"search"
-							],
-							"query": [
-								{
-									"key": "q",
-									"value": "Something+About+Being+Sixteen+Teenage+Joans"
-								},
-								{
-									"key": "type",
-									"value": "track"
-								},
-								{
-									"key": "market",
-									"value": "AU",
-									"disabled": true
-								},
-								{
-									"key": "limit",
-									"value": "3"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "JJJ",
-			"item": [
-				{
-					"name": "Now Playing",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "https://music.abcradio.net.au/api/v1/plays/triplej/now.json?tz=Australia/Sydney",
-							"protocol": "https",
-							"host": [
-								"music",
-								"abcradio",
-								"net",
-								"au"
-							],
-							"path": [
-								"api",
-								"v1",
-								"plays",
-								"triplej",
-								"now.json"
-							],
-							"query": [
-								{
-									"key": "tz",
-									"value": "Australia/Sydney"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"auth": {
-				"type": "noauth"
-			},
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				}
-			]
-		},
-		{
 			"name": "OAuth",
 			"item": [
 				{
@@ -837,6 +648,241 @@
 							"path": [
 								"account",
 								"signin"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Vendor",
+			"item": [
+				{
+					"name": "Spotify",
+					"item": [
+						{
+							"name": "Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// pm.test(\"response is ok\", function () {\r",
+											"//     pm.response.to.have.status(201);\r",
+											"// });\r",
+											"\r",
+											"pm.test(\"response must be valid and have a body\", function () {\r",
+											"     pm.response.to.be.json;\r",
+											"});\r",
+											"\r",
+											"var jsonData = pm.response.json();\r",
+											"\r",
+											"pm.test(\"Check access_token is in response\", function () {\r",
+											"    pm.expect(jsonData).to.have.property('access_token');\r",
+											"});\r",
+											"pm.environment.set(\"spotifyAccessToken\", jsonData.access_token);\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Basic {{spotifyClientAuth}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "urlencoded",
+									"urlencoded": [
+										{
+											"key": "grant_type",
+											"value": "client_credentials",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "https://accounts.spotify.com/api/token",
+									"protocol": "https",
+									"host": [
+										"accounts",
+										"spotify",
+										"com"
+									],
+									"path": [
+										"api",
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Search",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{spotifyAccessToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://api.spotify.com/v1/search?q=Something+About+Being+Sixteen+Teenage+Joans&type=track&limit=3",
+									"protocol": "https",
+									"host": [
+										"api",
+										"spotify",
+										"com"
+									],
+									"path": [
+										"v1",
+										"search"
+									],
+									"query": [
+										{
+											"key": "q",
+											"value": "Something+About+Being+Sixteen+Teenage+Joans"
+										},
+										{
+											"key": "type",
+											"value": "track"
+										},
+										{
+											"key": "market",
+											"value": "AU",
+											"disabled": true
+										},
+										{
+											"key": "limit",
+											"value": "3"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"auth": {
+						"type": "noauth"
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "JJJ",
+					"item": [
+						{
+							"name": "Now Playing",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://music.abcradio.net.au/api/v1/plays/triplej/now.json?tz=Australia/Sydney",
+									"protocol": "https",
+									"host": [
+										"music",
+										"abcradio",
+										"net",
+										"au"
+									],
+									"path": [
+										"api",
+										"v1",
+										"plays",
+										"triplej",
+										"now.json"
+									],
+									"query": [
+										{
+											"key": "tz",
+											"value": "Australia/Sydney"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"auth": {
+						"type": "noauth"
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Song",
+			"item": [
+				{
+					"name": "Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/search?query=opeth+bleak",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "opeth+bleak"
+								}
 							]
 						}
 					},
