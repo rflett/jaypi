@@ -15,10 +15,9 @@ type Link struct {
 }
 
 type ArtworkSize struct {
-	Url         string `json:"url"`
-	Width       int    `json:"width"`
-	Height      int    `json:"height"`
-	AspectRatio string `json:"aspect_ratio"`
+	Url    string `json:"url"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
 }
 
 type Artwork struct {

@@ -287,6 +287,7 @@ functions:
             resultTtlInSeconds: 0
             identitySource: method.request.header.Authorization
             type: token
+
   # GROUPS
   createGroup:
     handler: source/bin/createGroup
@@ -462,6 +463,33 @@ functions:
             parameters:
               paths:
                 songId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  # SEARCH
+  songSearch:
+    handler: source/bin/songSearch
+    name: song-search-${self:provider.stage}
+    description: "Search for a song, proxied via Spotify"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/songSearch
+    environment:
+      SPOTIFY_CLIENT_ID: ${env:SPOTIFY_CLIENT_ID}
+      SPOTIFY_SECRET_ID: ${env:SPOTIFY_SECRET_ID}
+    events:
+      - http:
+          path: search
+          method: get
+          request:
+            parameters:
+              querystrings:
+                query: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
