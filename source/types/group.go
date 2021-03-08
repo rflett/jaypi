@@ -401,6 +401,40 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	return users, nil
 }
 
+// GetGames returns the games in a group
+func (g *Group) GetGames() ([]Game, error) {
+	// get the users in the group
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			":sk": {
+				S: aws.String("GAME#"),
+			},
+		},
+		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	groupsGames, err := clients.DynamoClient.Query(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error getting groups games")
+		return []Game{}, err
+	}
+
+	var games []Game = nil
+	for _, groupGame := range groupsGames.Items {
+		game := Game{}
+		if err = dynamodbattribute.UnmarshalMap(groupGame, &game); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal groupGame to game")
+			continue
+		}
+		games = append(games, game)
+	}
+	return games, nil
+}
+
 // ValidateCode checks if a code already exists against a group and returns an error if it does
 func validateGroupCode(code string) error {
 	// input

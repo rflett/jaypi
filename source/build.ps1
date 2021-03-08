@@ -17,6 +17,10 @@ go build -ldflags="-s -w" -o bin/updateGroup rest/group/updateGroup/main.go
 go build -ldflags="-s -w" -o bin/joinGroup rest/group/joinGroup/main.go
 go build -ldflags="-s -w" -o bin/leaveGroup rest/group/leaveGroup/main.go
 go build -ldflags="-s -w" -o bin/getGroupQR rest/group/getGroupQR/main.go
+go build -ldflags="-s -w" -o bin/createGame rest/group/createGame/main.go
+go build -ldflags="-s -w" -o bin/deleteGame rest/group/deleteGame/main.go
+go build -ldflags="-s -w" -o bin/updateGame rest/group/updateGame/main.go
+go build -ldflags="-s -w" -o bin/getGames rest/group/getGames/main.go
 
 go build -ldflags="-s -w" -o bin/songSearch rest/song/songSearch/main.go
 go build -ldflags="-s -w" -o bin/createVote rest/votes/createVote/main.go

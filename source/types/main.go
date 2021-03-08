@@ -13,6 +13,7 @@ const (
 	UserAuthProviderSortKey    = "#PROVIDER_ID"
 	PlayCountPrimaryKey        = "PLAYCOUNT"
 	PlayCountSortKey           = "CURRENT"
+	GameSortKey                = "GAME"
 	GSI                        = "GSI1"
 	AuthProviderGoogle         = "google"
 	AuthProviderGitHub         = "github"

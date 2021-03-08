@@ -448,6 +448,104 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  createGame:
+    handler: source/bin/createGame
+    name: create-game-${self:provider.stage}
+    description: "Creates a game"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/createGame
+    events:
+      - http:
+          path: group/{groupId}/game
+          method: post
+          request:
+            parameters:
+              paths:
+                groupId: true
+            schema:
+              application/json: ${file(schemas/game/create.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  updateGame:
+    handler: source/bin/updateGame
+    name: update-game-${self:provider.stage}
+    description: "Updates a game"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/updateGame
+    events:
+      - http:
+          path: group/{groupId}/game/{gameId}
+          method: put
+          request:
+            parameters:
+              paths:
+                groupId: true
+                gameId: true
+            schema:
+              application/json: ${file(schemas/game/update.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  deleteGame:
+    handler: source/bin/deleteGame
+    name: delete-game-${self:provider.stage}
+    description: "Delete a game"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/deleteGame
+    events:
+      - http:
+          path: group/{groupId}/game/{gameId}
+          method: delete
+          request:
+            parameters:
+              paths:
+                groupId: true
+                gameId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  getGames:
+    handler: source/bin/getGames
+    name: get-games-${self:provider.stage}
+    description: "Get games"
+    memorySize: 128
+    timeout: 10
+    package:
+      include:
+        - ./source/bin/getGames
+    events:
+      - http:
+          path: group/{groupId}/game
+          method: get
+          request:
+            parameters:
+              paths:
+                groupId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   # VOTES
   createVote:
     handler: source/bin/createVote

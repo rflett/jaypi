@@ -264,19 +264,15 @@ func (u *User) AddVote(s *Song, position int) (status int, error error) {
 
 // RemoveVote removes a song as a users vote
 func (u *User) RemoveVote(songID *string) (status int, error error) {
-	// set fields
-	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-	}
-	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", "SONG", *songID)),
-	}
-
 	// delete query
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
-			"PK": &pk,
-			"SK": &sk,
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, *songID)),
+			},
 		},
 		TableName: &clients.DynamoTable,
 	}
