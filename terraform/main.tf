@@ -83,7 +83,8 @@ resource "aws_iam_role_policy" "jaypi" {
           "sqs:DeleteMessage",
           "sqs:ReceiveMessage",
           "sqs:GetQueueAttributes",
-          "secretsmanager:GetSecretValue"
+          "secretsmanager:GetSecretValue",
+          "s3:PutObject"
         ],
         Resource = [
           aws_sqs_queue.chune_refresh.arn,
@@ -93,6 +94,7 @@ resource "aws_iam_role_policy" "jaypi" {
           aws_sqs_queue.town_crier_dlq.arn,
           aws_dynamodb_table.jaypi.arn,
           "${aws_dynamodb_table.jaypi.arn}/*",
+          "${aws_s3_bucket.assets.arn}/*",
           data.aws_secretsmanager_secret.jwt_signing_key.arn,
           "arn:aws:sns:ap-southeast-2:${data.aws_caller_identity.current.account_id}:endpoint/*",
           "arn:aws:sns:ap-southeast-2:${data.aws_caller_identity.current.account_id}:app/*"
@@ -168,4 +170,36 @@ resource "aws_sns_platform_application" "apn_application" {
   success_feedback_sample_rate = 100
   platform_credential          = base64decode(data.aws_ssm_parameter.apn_key.value)
   platform_principal           = base64decode(data.aws_ssm_parameter.apn_cert.value)
+}
+
+resource "aws_cloudfront_origin_access_identity" "main" {
+  comment = "jaypi-${terraform.workspace}"
+}
+
+resource "aws_s3_bucket" "assets" {
+  bucket = "jaypi-${terraform.workspace}-rfacc"
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_public_access_block" "assets" {
+  bucket                  = aws_s3_bucket.assets.bucket
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "assets" {
+  bucket = aws_s3_bucket.assets.bucket
+  policy = jsonencode({
+    Version = "2008-10-17",
+    Statement = [{
+      Action = "s3:GetObject",
+      Effect = "Allow",
+      Resource = "${aws_s3_bucket.assets.arn}/*",
+      Principal = {
+        AWS = aws_cloudfront_origin_access_identity.main.iam_arn
+      }
+    }]
+  })
 }

@@ -153,6 +153,24 @@
 					"response": []
 				},
 				{
+					"name": "Get Avatar Pre-signed URL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/user/avatar",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
+								"avatar"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Create Vote",
 					"event": [
 						{
@@ -240,6 +258,174 @@
 		{
 			"name": "Group",
 			"item": [
+				{
+					"name": "Games",
+					"item": [
+						{
+							"name": "Create Game",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"response is ok\", function () {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"response must be valid and have a body\", function () {\r",
+											"     pm.response.to.be.json;\r",
+											"});\r",
+											"\r",
+											"var jsonData = pm.response.json();\r",
+											"\r",
+											"pm.test(\"Check gameID is in response\", function () {\r",
+											"    pm.expect(jsonData).to.have.property('gameID');\r",
+											"});\r",
+											"pm.environment.set(\"gameID\", jsonData.gameID);\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"name\": \"Waterfall\",\r\n  \"description\": \"The person who voted for the song gets to stop whenever they want; this allows the person to his/her right to stop drinking whenever. When that person stops drinking, the person to his/her can stop. This goes on until everyone is no longer drinking.\"\r\n}\r\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/group/{{groupID}}/game",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"group",
+										"{{groupID}}",
+										"game"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Game",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"response is ok\", function () {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"name\": \"FleetStreet\",\r\n  \"description\": \"Ryan flett\"\r\n}\r\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/group/{{groupID}}/game/76753a54-5095-4eaf-95f5-03bd916d05c1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"group",
+										"{{groupID}}",
+										"game",
+										"76753a54-5095-4eaf-95f5-03bd916d05c1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Games",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"response is ok\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/group/{{groupID}}/game",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"group",
+										"{{groupID}}",
+										"game"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Game",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"response is ok\", function () {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/group/{{groupID}}/game/{{gameID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"group",
+										"{{groupID}}",
+										"game",
+										"{{gameID}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
 				{
 					"name": "Create Group",
 					"event": [

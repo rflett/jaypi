@@ -90,6 +90,45 @@ func (u *User) voteCount() (count int, error error) {
 	return int(*queryResult.Count), nil
 }
 
+// GenerateAvatarUrl generates a new avatar UUID and sets it on the user
+func (u *User) GenerateAvatarUrl() (avatarUuid string, error error) {
+	avatarUuid = uuid.NewString()
+	avatarUrl := fmt.Sprintf("https://%s/user/avatar/%s.jpg", UserAvatarDomain, avatarUuid)
+
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#A": aws.String("avatarUrl"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":a": {
+				S: &avatarUrl,
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("SET #A = :a"),
+	}
+
+	_, err := clients.DynamoClient.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error creating new avatar url for user")
+		return "", err
+	}
+
+	return avatarUuid, nil
+}
+
 // Create the user and save them to the database
 func (u *User) Create() (status int, error error) {
 	// set fields

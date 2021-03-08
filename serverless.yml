@@ -288,6 +288,27 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  getAvatarURL:
+    handler: source/bin/getAvatarURL
+    name: get-user-avatar-url-${self:provider.stage}
+    description: "Generate a pre-signed URL for uploading a users avatar"
+    memorySize: 128
+    timeout: 10
+    environment:
+      ASSETS_BUCKET: jaypi-${self:provider.stage}-rfacc
+    package:
+      include:
+        - ./source/bin/getAvatarURL
+    events:
+      - http:
+          path: user/avatar
+          method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   # GROUPS
   createGroup:
     handler: source/bin/createGroup

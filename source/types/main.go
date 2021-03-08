@@ -21,6 +21,7 @@ const (
 	AuthProviderInternal       = "delegator"
 	SNSPlatformGoogle          = "android"
 	SNSPlatformApple           = "ios"
+	UserAvatarDomain           = "assets.jaypi.com.au"
 )
 
 type PlayCount struct {
