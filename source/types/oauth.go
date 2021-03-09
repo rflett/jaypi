@@ -6,6 +6,8 @@ import (
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/instagram"
+	"golang.org/x/oauth2/spotify"
 	"os"
 	"strconv"
 )
@@ -21,6 +23,14 @@ type OauthProvider struct {
 	oauth2.Config
 	GetProfileRequestUrl   func(token *oauth2.Token) string
 	GetGenericResponseData func(response map[string]interface{}) OauthResponse
+}
+
+var OauthProviders = map[string]*OauthProvider{
+	AuthProviderGoogle:    &GoogleOauth,
+	AuthProviderGitHub:    &GithubOauth,
+	AuthProviderFacebook:  &FacebookOauth,
+	AuthProviderInstagram: &InstagramOauth,
+	AuthProviderSpotify:   &SpotifyOauth,
 }
 
 var GoogleOauth = OauthProvider{
@@ -62,6 +72,45 @@ var FacebookOauth = OauthProvider{
 	},
 }
 
+var InstagramOauth = OauthProvider{
+	Config: oauth2.Config{
+		ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
+		ClientSecret: os.Getenv("FACEBOOK_SECRET_ID"),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", os.Getenv("OAUTH_CALLBACK_HOST"), AuthProviderInstagram),
+		Scopes: []string{
+			"public_profile",
+			"email",
+		},
+		Endpoint: instagram.Endpoint,
+	},
+	GetProfileRequestUrl: func(token *oauth2.Token) string {
+		// Facebook doesn't accept auth headers
+		return fmt.Sprintf("https://graph.instagram.com/me?fields=email,name,picture&access_token=%s", token.AccessToken)
+	},
+	GetGenericResponseData: func(response map[string]interface{}) OauthResponse {
+		return facebookResponseToGeneric(response)
+	},
+}
+
+var SpotifyOauth = OauthProvider{
+	Config: oauth2.Config{
+		ClientID:     os.Getenv("SPOTIFY_CLIENT_ID"),
+		ClientSecret: os.Getenv("SPOTIFY_SECRET_ID"),
+		RedirectURL:  fmt.Sprintf("%s/oauth/%s/redirect", os.Getenv("OAUTH_CALLBACK_HOST"), AuthProviderSpotify),
+		Scopes: []string{
+			"user-read-private",
+			"user-read-email",
+		},
+		Endpoint: spotify.Endpoint,
+	},
+	GetProfileRequestUrl: func(token *oauth2.Token) string {
+		return "https://api.spotify.com/v1/me"
+	},
+	GetGenericResponseData: func(response map[string]interface{}) OauthResponse {
+		return spotifyResponseToGeneric(response)
+	},
+}
+
 var GithubOauth = OauthProvider{
 	Config: oauth2.Config{
 		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
@@ -76,12 +125,6 @@ var GithubOauth = OauthProvider{
 	GetGenericResponseData: func(response map[string]interface{}) OauthResponse {
 		return githubResponseToGeneric(response)
 	},
-}
-
-var OauthProviders = map[string]*OauthProvider{
-	AuthProviderGoogle:   &GoogleOauth,
-	AuthProviderGitHub:   &GithubOauth,
-	AuthProviderFacebook: &FacebookOauth,
 }
 
 func githubResponseToGeneric(response map[string]interface{}) OauthResponse {
@@ -110,5 +153,14 @@ func facebookResponseToGeneric(response map[string]interface{}) OauthResponse {
 		Email:   response["email"].(string),
 		Name:    response["name"].(string),
 		Picture: pictureUrl,
+	}
+}
+
+func spotifyResponseToGeneric(response map[string]interface{}) OauthResponse {
+	return OauthResponse{
+		Id:      response["id"].(string),
+		Email:   response["email"].(string),
+		Name:    response["display_name"].(string),
+		Picture: response["images"].([]string)[0],
 	}
 }

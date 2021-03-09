@@ -18,6 +18,8 @@ const (
 	AuthProviderGoogle         = "google"
 	AuthProviderGitHub         = "github"
 	AuthProviderFacebook       = "facebook"
+	AuthProviderInstagram      = "instagram"
+	AuthProviderSpotify        = "spotify"
 	AuthProviderInternal       = "delegator"
 	SNSPlatformGoogle          = "android"
 	SNSPlatformApple           = "ios"
