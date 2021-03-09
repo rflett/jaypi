@@ -482,12 +482,6 @@ functions:
       - http:
           path: group/{groupId}/game
           method: post
-          request:
-            parameters:
-              paths:
-                groupId: true
-            schema:
-              application/json: ${file(schemas/game/create.json)}
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
@@ -507,13 +501,6 @@ functions:
       - http:
           path: group/{groupId}/game/{gameId}
           method: put
-          request:
-            parameters:
-              paths:
-                groupId: true
-                gameId: true
-            schema:
-              application/json: ${file(schemas/game/update.json)}
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
@@ -533,11 +520,6 @@ functions:
       - http:
           path: group/{groupId}/game/{gameId}
           method: delete
-          request:
-            parameters:
-              paths:
-                groupId: true
-                gameId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
@@ -557,10 +539,6 @@ functions:
       - http:
           path: group/{groupId}/game
           method: get
-          request:
-            parameters:
-              paths:
-                groupId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
