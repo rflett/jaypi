@@ -151,3 +151,49 @@ func (g *Game) Delete() (status int, error error) {
 	logger.Log.Info().Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("succesfully deleted game")
 	return http.StatusNoContent, nil
 }
+
+// Exists checks to see if the Game exists in the table already
+func (g *Game) Exists() (bool, error) {
+	// input
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", GameSortKey, g.GameID)),
+			},
+		},
+		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
+		ProjectionExpression:   aws.String("songID"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	// query
+	result, err := clients.DynamoClient.Query(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case dynamodb.ErrCodeResourceNotFoundException:
+				return false, nil
+			}
+			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Error checking if game exists in table")
+			return false, err
+		} else {
+			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Error checking if game exists in table")
+			return false, err
+		}
+	}
+
+	// game doesn't exist
+	if len(result.Items) == 0 {
+		logger.Log.Info().Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Game does not exist in table")
+		return false, nil
+	}
+
+	// game exists
+	logger.Log.Info().Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Game already exists in table")
+	return true, nil
+}

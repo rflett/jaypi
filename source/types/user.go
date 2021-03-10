@@ -19,21 +19,21 @@ import (
 
 // User is a User of the application
 type User struct {
-	PK               string    `json:"-" dynamodbav:"PK"`
-	SK               string    `json:"-" dynamodbav:"SK"`
-	UserID           string    `json:"userID"`
-	Name             string    `json:"name"`
-	Email            string    `json:"email"`
-	Points           int       `json:"points"`
-	CreatedAt        string    `json:"createdAt"`
-	GroupID          *string   `json:"groupID"`
-	NickName         *string   `json:"nickName"`
-	AuthProvider     *string   `json:"authProvider"`
-	AuthProviderId   *string   `json:"authProviderId"`
-	AvatarUrl        *string   `json:"avatarUrl"`
-	Votes            *[]Song   `json:"votes"`
-	UpdatedAt        *string   `json:"updatedAt"`
-	Password         *string   `json:"-" dynamodbav:"password"`
+	PK             string  `json:"-" dynamodbav:"PK"`
+	SK             string  `json:"-" dynamodbav:"SK"`
+	UserID         string  `json:"userID"`
+	Name           string  `json:"name"`
+	Email          string  `json:"email"`
+	Points         int     `json:"points"`
+	CreatedAt      string  `json:"createdAt"`
+	GroupID        *string `json:"groupID"`
+	NickName       *string `json:"nickName"`
+	AuthProvider   *string `json:"authProvider"`
+	AuthProviderId *string `json:"authProviderId"`
+	AvatarUrl      *string `json:"avatarUrl"`
+	Votes          *[]Song `json:"votes"`
+	UpdatedAt      *string `json:"updatedAt"`
+	Password       *string `json:"-" dynamodbav:"password"`
 }
 
 // UserClaims are the custom claims that embedded into the JWT token for authentication

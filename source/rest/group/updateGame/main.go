@@ -46,6 +46,18 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		Name:        reqBody.Name,
 		Description: reqBody.Description,
 	}
+
+	// you can't update the game if it doesn't exist
+	var exists bool
+	exists, err = game.Exists()
+	if err != nil {
+		return services.ReturnError(err, http.StatusInternalServerError)
+	}
+	if !exists {
+		return services.ReturnError(errors.New("Game does not exist"), http.StatusBadRequest)
+	}
+
+	// update the game
 	if status, err = game.Update(); err != nil {
 		return services.ReturnError(err, status)
 	}
