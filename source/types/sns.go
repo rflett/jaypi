@@ -1,14 +1,15 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
-	"time"
 )
 
 type PlatformApp struct {
@@ -17,8 +18,11 @@ type PlatformApp struct {
 }
 
 type PlatformEndpoint struct {
-	Arn    string
-	UserID *string
+	PK       string `json:"-" dynamodbav:"PK"`
+	SK       string `json:"-" dynamodbav:"SK"`
+	Arn      string `json:"-" dynamodbav:"arn"`
+	UserID   string `json:"-" dynamodbav:"userID"`
+	Platform string `json:"-" dynamodbav:"platform"`
 }
 
 // GetPlatformEndpointFromToken returns a PlatformEndpoint based on the device token
@@ -28,8 +32,9 @@ func (p *PlatformApp) GetPlatformEndpointFromToken(token *string) (platformEndpo
 		for _, endpoint := range page.Endpoints {
 			if *endpoint.Attributes["Token"] == *token {
 				platformEndpoint = &PlatformEndpoint{
-					UserID: endpoint.Attributes["CustomUserData"],
-					Arn:    *endpoint.EndpointArn,
+					UserID:   *endpoint.Attributes["CustomUserData"],
+					Arn:      *endpoint.EndpointArn,
+					Platform: p.Platform,
 				}
 				return false
 			}
@@ -57,37 +62,21 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 		return err
 	}
 
-	// set fields
-	updatedAt := time.Now().UTC().Format(time.RFC3339)
-
-	// update table item query
-	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#PE": aws.String(fmt.Sprintf("%sEndpoints", p.Platform)),
-			"#UA": aws.String("updatedAt"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pe": {
-				SS: []*string{endpoint.EndpointArn},
-			},
-			":ua": {
-				S: &updatedAt,
-			},
-		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, userID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, userID)),
-			},
-		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("ADD #PE :pe SET #UA = :ua"),
+	// create platform endpoint in table
+	pe := PlatformEndpoint{
+		PK:       fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
+		SK:       fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, *endpoint.EndpointArn),
+		UserID:   userID,
+		Arn:      *endpoint.EndpointArn,
+		Platform: p.Platform,
 	}
-	_, err = clients.DynamoClient.UpdateItem(input)
-	if err != nil {
+	av, _ := dynamodbattribute.MarshalMap(pe)
+	input := &dynamodb.PutItemInput{
+		TableName:    &clients.DynamoTable,
+		Item:         av,
+		ReturnValues: aws.String("NONE"),
+	}
+	if _, err = clients.DynamoClient.PutItem(input); err != nil {
 		logger.Log.Error().Err(err).Str("platformAppArn", p.Arn).Str("endpointArn", *endpoint.EndpointArn).Msg("Error adding endpoint arn to user")
 		return err
 	}
@@ -106,43 +95,24 @@ func (p *PlatformEndpoint) Delete() error {
 		return err
 	}
 
-	// set fields
-	updatedAt := time.Now().UTC().Format(time.RFC3339)
-
-	// update table item query
-	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#ANDPE": aws.String(fmt.Sprintf("%sEndpoints", SNSPlatformGoogle)),
-			"#IOSPE": aws.String(fmt.Sprintf("%sEndpoints", SNSPlatformApple)),
-			"#UA":    aws.String("updatedAt"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pe": {
-				SS: []*string{&p.Arn},
-			},
-			":ua": {
-				S: &updatedAt,
-			},
-		},
+	// delete platform endpoint from table
+	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, *p.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, p.UserID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, *p.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, p.Arn)),
 			},
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("DELETE #ANDPE :pe, #IOSPE :pe SET #UA = :ua"),
+		TableName: &clients.DynamoTable,
 	}
-	_, err = clients.DynamoClient.UpdateItem(input)
-	if err != nil {
+	if _, err = clients.DynamoClient.DeleteItem(input); err != nil {
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error deleting endpoint arn from user")
 		return err
 	}
 
-	logger.Log.Info().Str("userID", *p.UserID).Str("endpointArn", p.Arn).Msg("Successfully deleted SNS endpoint for user")
+	logger.Log.Info().Str("userID", p.UserID).Str("endpointArn", p.Arn).Msg("Successfully deleted SNS endpoint for user")
 	return nil
 }
 
@@ -165,7 +135,7 @@ func (p *PlatformEndpoint) SendAppleNotification(notification *Notification) err
 		return err
 	}
 
-	logger.Log.Info().Str("userID", *p.UserID).Str("messageID", *message.MessageId).Msg("Successfully sent ios notification")
+	logger.Log.Info().Str("userID", p.UserID).Str("messageID", *message.MessageId).Msg("Successfully sent ios notification")
 	return nil
 }
 
@@ -187,6 +157,38 @@ func (p *PlatformEndpoint) SendAndroidNotification(notification *Notification) e
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error publishing android notification to SNS")
 	}
 
-	logger.Log.Info().Str("userID", *p.UserID).Str("messageID", *message.MessageId).Msg("Successfully sent android notification")
+	logger.Log.Info().Str("userID", p.UserID).Str("messageID", *message.MessageId).Msg("Successfully sent android notification")
+	return nil
+}
+
+// SendNotification sends a notification to a PlatformEndpoint
+func (p *PlatformEndpoint) SendNotification(n *Notification) error {
+	// generate message
+	var message string
+	switch p.Platform {
+	case SNSPlatformGoogle:
+		message = n.AndroidPayload()
+	case SNSPlatformApple:
+		message = n.IosPayload()
+	default:
+		return errors.New("unsupported platform")
+	}
+
+	resp, err := clients.SNSClient.Publish(&sns.PublishInput{
+		Message:          &message,
+		MessageStructure: aws.String("json"),
+		TargetArn:        &p.Arn,
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == sns.ErrCodeEndpointDisabledException {
+				logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Cannot send android notification because endpoint is disabled")
+				return p.Delete()
+			}
+		}
+		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error publishing android notification to SNS")
+	}
+
+	logger.Log.Info().Str("userID", p.UserID).Str("messageID", *resp.MessageId).Msg("Successfully sent android notification")
 	return nil
 }

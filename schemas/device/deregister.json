@@ -3,7 +3,8 @@
   "title": "JayPI",
   "type": "object",
   "properties": {
-    "endpoint": { "type": "string" }
+    "endpoint": { "type": "string" },
+    "platform": { "type": "string", "enum": ["ios", "android"] }
   },
-  "required": ["endpoint"]
+  "required": ["endpoint", "platform"]
 }

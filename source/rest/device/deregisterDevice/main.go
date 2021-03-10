@@ -13,6 +13,7 @@ import (
 // requestBody is the expected body of the create groupOld request
 type requestBody struct {
 	Endpoint string `json:"endpoint"`
+	Platform string `json:"platform"`
 }
 
 // Handler is our handle on life
@@ -43,7 +44,11 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// delete
-	platformEndpoint := types.PlatformEndpoint{Arn: reqBody.Endpoint, UserID: &authContext.UserID}
+	platformEndpoint := types.PlatformEndpoint{
+		Arn:      reqBody.Endpoint,
+		UserID:   authContext.UserID,
+		Platform: reqBody.Platform,
+	}
 	err = platformEndpoint.Delete()
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)

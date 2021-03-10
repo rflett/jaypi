@@ -66,13 +66,40 @@
 							"response": []
 						},
 						{
-							"name": "Deregister",
+							"name": "Deregister Android",
 							"request": {
 								"method": "DELETE",
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"endpoint\": \"arn:aws:sns:ap-southeast-2:292374005836:endpoint/GCM/google-fcm-notifications-dev/99e98b0e-292c-3859-8236-f3a9ea2e0f07\"\r\n}",
+									"raw": "{\r\n    \"endpoint\": \"arn:aws:sns:ap-southeast-2:292374005836:endpoint/GCM/google-fcm-notifications-dev/99e98b0e-292c-3859-8236-f3a9ea2e0f07\",\r\n    \"platform\": \"android\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/user/device",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"user",
+										"device"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Deregister Apple",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"endpoint\": \"arn:aws:sns:ap-southeast-2:292374005836:endpoint/APNS/apple-apn-notifications-dev/f18eacab-0d88-3b60-bde8-92a6d30daf26\",\r\n    \"platform\": \"ios\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -504,7 +531,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"flettel's group\"\r\n}\r\n",
+							"raw": "{\r\n  \"name\": \"Fleet Street 2.0\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -548,7 +575,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/group/{{groupID}}/members?withVotes=true",
+							"raw": "{{host}}/group/{{groupID}}/members?withVotes=false",
 							"host": [
 								"{{host}}"
 							],
@@ -560,7 +587,7 @@
 							"query": [
 								{
 									"key": "withVotes",
-									"value": "true"
+									"value": "false"
 								}
 							]
 						}
@@ -783,7 +810,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"Ryan Flett\",\r\n  \"nickName\": \"fletty\",\r\n  \"email\": \"ryan.flett1@gmail.com\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
+							"raw": "{\r\n  \"name\": \"Ryan Flett\",\r\n  \"nickName\": \"fletty\",\r\n  \"email\": \"ryan.flett@delegator.com.au\",\r\n  \"password\": \"ryanflett\"\r\n}\r\n",
 							"options": {
 								"raw": {
 									"language": "json"

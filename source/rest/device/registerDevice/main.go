@@ -55,7 +55,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// if the token is in use with an endpoint already then delete the endpoint
-	if platformEndpoint != nil && *platformEndpoint.UserID != authContext.UserID {
+	if platformEndpoint != nil && platformEndpoint.UserID != authContext.UserID {
 		err = platformEndpoint.Delete()
 		if err != nil {
 			return services.ReturnError(err, http.StatusBadRequest)

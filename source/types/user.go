@@ -34,8 +34,6 @@ type User struct {
 	Votes            *[]Song   `json:"votes"`
 	UpdatedAt        *string   `json:"updatedAt"`
 	Password         *string   `json:"-" dynamodbav:"password"`
-	IOSEndpoints     *[]string `json:"-" dynamodbav:"iosEndpoints"`
-	AndroidEndpoints *[]string `json:"-" dynamodbav:"androidEndpoints"`
 }
 
 // UserClaims are the custom claims that embedded into the JWT token for authentication
@@ -74,7 +72,7 @@ func (u *User) voteCount() (count int, error error) {
 				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			":sk": {
-				S: aws.String(fmt.Sprintf("%s#", "SONG")),
+				S: aws.String(fmt.Sprintf("%s#", SongPrimaryKey)),
 			},
 		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
@@ -136,7 +134,6 @@ func (u *User) Create() (status int, error error) {
 	u.PK = fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)
 	u.SK = fmt.Sprintf("%s#%s", UserSortKey, u.UserID)
 	u.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(u)
 
@@ -662,4 +659,40 @@ func (u *User) CreateToken() (string, error) {
 		return "", err
 	}
 	return token.SignedString(key)
+}
+
+// GetEndpoints returns all of the device endpoints that a user has
+func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
+	// input
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#", EndpointSortKey)),
+			},
+		},
+		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
+		ProjectionExpression:   aws.String("arn, platform"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	queryResult, queryErr := clients.DynamoClient.Query(input)
+	if queryErr != nil {
+		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting users endpoints")
+		return &[]PlatformEndpoint{}, queryErr
+	}
+
+	var endpoints []PlatformEndpoint
+	for _, item := range queryResult.Items {
+		endpoint := PlatformEndpoint{}
+		if err := dynamodbattribute.UnmarshalMap(item, &endpoint); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal item to PlatformEndpoint")
+			continue
+		}
+		endpoints = append(endpoints, endpoint)
+	}
+
+	return &endpoints, nil
 }

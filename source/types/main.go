@@ -14,6 +14,7 @@ const (
 	PlayCountPrimaryKey        = "PLAYCOUNT"
 	PlayCountSortKey           = "CURRENT"
 	GameSortKey                = "GAME"
+	EndpointSortKey            = "#ENDPOINT"
 	GSI                        = "GSI1"
 	AuthProviderGoogle         = "google"
 	AuthProviderGitHub         = "github"
@@ -45,7 +46,7 @@ type ScoreTakerBody struct {
 
 type CrierBody struct {
 	UserID string `json:"userID"`
-	*Notification
+	Notification
 }
 
 type LoginResponse struct {

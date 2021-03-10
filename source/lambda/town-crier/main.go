@@ -20,26 +20,16 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 
 	// get user
 	user := types.User{UserID: mb.UserID}
-	_, err := user.GetByUserID()
+	endpoints, err := user.GetEndpoints()
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Unable to get user")
 		return err
 	}
 
-	// send notification to android endpoints
-	if user.AndroidEndpoints != nil {
-		for _, arn := range *user.AndroidEndpoints {
-			endpoint := types.PlatformEndpoint{UserID: &user.UserID, Arn: arn}
-			_ = endpoint.SendAndroidNotification(mb.Notification)
-		}
-	}
-
-	// send notification to ios endpoints
-	if user.IOSEndpoints != nil {
-		for _, arn := range *user.IOSEndpoints {
-			endpoint := types.PlatformEndpoint{UserID: &user.UserID, Arn: arn}
-			_ = endpoint.SendAppleNotification(mb.Notification)
-		}
+	// send notifications
+	for _, endpoint := range *endpoints {
+		endpoint.UserID = mb.UserID
+		_ = endpoint.SendNotification(&mb.Notification)
 	}
 
 	// TODO publish sockets
