@@ -90,4 +90,4 @@ jobs:
           GH_CLIENT_ID: ${{ secrets.GH_SECRET_ID }}
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_SECRET_ID: ${{ secrets.SPOTIFY_SECRET_ID }}
-        run: serverless deploy --verbose --stage dev
+        run: serverless deploy --verbose --stage staging

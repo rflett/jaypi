@@ -1,11 +1,11 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_secretsmanager_secret" "jwt_signing_key" {
-  name = "jjj-api-private-signing-key"
+  name = "jaypi-private-key-${terraform.workspace}"
 }
 
 data "aws_ssm_parameter" "gcm_token" {
-  name            = "/${terraform.workspace}/sns/google-fcm-notifications-server-token"
+  name            = "/${terraform.workspace}/sns/fcm-delegator-countdown-test-token"
   with_decryption = true
 }
 
@@ -20,12 +20,12 @@ data "aws_ssm_parameter" "apn_key" {
 }
 
 resource "aws_dynamodb_table" "jaypi" {
-  name           = "jaypi"
+  name           = "jaypi-${terraform.workspace}"
   billing_mode   = "PROVISIONED"
-  read_capacity  = 1
-  write_capacity = 1
   hash_key       = "PK"
   range_key      = "SK"
+  read_capacity  = 1
+  write_capacity = 1
 
   attribute {
     name = "PK"
@@ -48,7 +48,7 @@ resource "aws_dynamodb_table" "jaypi" {
 }
 
 resource "aws_iam_role" "jaypi" {
-  name = "lambda-jaypi"
+  name = "lambda-jaypi-${terraform.workspace}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -63,6 +63,7 @@ resource "aws_iam_role" "jaypi" {
 }
 
 resource "aws_iam_role_policy" "jaypi" {
+  name = aws_iam_role.jaypi.name
   role = aws_iam_role.jaypi.id
 
   policy = jsonencode({
@@ -166,8 +167,8 @@ resource "aws_sns_platform_application" "gcm_application" {
 
 resource "aws_sns_platform_application" "apn_application" {
   name                         = "apple-apn-notifications-${terraform.workspace}"
-  platform                     = "APNS"
   success_feedback_sample_rate = 100
+  platform                     = terraform.workspace == "production" ? "APNS" : "APNS_SANDBOX"
   platform_credential          = base64decode(data.aws_ssm_parameter.apn_key.value)
   platform_principal           = base64decode(data.aws_ssm_parameter.apn_cert.value)
 }
@@ -177,7 +178,7 @@ resource "aws_cloudfront_origin_access_identity" "main" {
 }
 
 resource "aws_s3_bucket" "assets" {
-  bucket = "jaypi-${terraform.workspace}-rfacc"
+  bucket = "jaypi-assets-${terraform.workspace}"
   acl    = "private"
 }
 
@@ -194,8 +195,8 @@ resource "aws_s3_bucket_policy" "assets" {
   policy = jsonencode({
     Version = "2008-10-17",
     Statement = [{
-      Action = "s3:GetObject",
-      Effect = "Allow",
+      Action   = "s3:GetObject",
+      Effect   = "Allow",
       Resource = "${aws_s3_bucket.assets.arn}/*",
       Principal = {
         AWS = aws_cloudfront_origin_access_identity.main.iam_arn

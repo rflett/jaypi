@@ -1,5 +1,6 @@
-service: jjj-api
+service: jaypi
 frameworkVersion: '>=2.25.2 < 3.0.0'
+useDotenv: true
 plugins:
   - serverless-dotenv-plugin
 
@@ -7,13 +8,20 @@ provider:
   name: aws
   runtime: go1.x
   region: ap-southeast-2
-  stage: ${opt:staging, 'dev'}
-  useDotenv: true
+  stage: ${opt:staging, 'staging'}
   lambdaHashingVersion: 20201221
+  memorySize: 128
+  timeout: 10
+  deploymentBucket:
+    name: delegator-countdown-sls
+    serverSideEncryption: AES256
   iam:
-    role: arn:aws:iam::292374005836:role/lambda-jaypi
+    role: arn:aws:iam::135314794262:role/lambda-jaypi-${opt:staging, 'staging'}
   environment:
-    JAYPI_TABLE: jaypi
+    JAYPI_TABLE: jaypi-${opt:staging, 'staging'}
+  apigateway:
+    shouldStartNameWithService: true
+    description: ${opt:staging, 'staging'}-jaypi-apigw
 
 package:
   individually: true
@@ -26,7 +34,6 @@ functions:
     handler: source/bin/chuneMachine
     name: chune-machine-${self:provider.stage}
     description: "Listen to what's playing on JJJ"
-    memorySize: 128
     timeout: 20
     reservedConcurrency: 1
     package:
@@ -35,11 +42,11 @@ functions:
     environment:
       SPOTIFY_CLIENT_ID: ${env:SPOTIFY_CLIENT_ID}
       SPOTIFY_SECRET_ID: ${env:SPOTIFY_SECRET_ID}
-      REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/chune-refresh-${self:provider.stage}
-      COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/bean-counter-${self:provider.stage}
+      REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/135314794262/chune-refresh-${self:provider.stage}
+      COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/135314794262/bean-counter-${self:provider.stage}
     events:
       - sqs:
-          arn: arn:aws:sqs:ap-southeast-2:292374005836:chune-refresh-${self:provider.stage}
+          arn: arn:aws:sqs:ap-southeast-2:135314794262:chune-refresh-${self:provider.stage}
           batchSize: 1
           enabled: true
 
@@ -55,10 +62,10 @@ functions:
       include:
         - ./source/bin/beanCounter
     environment:
-      SCORER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/292374005836/scorer-${self:provider.stage}
+      SCORER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/135314794262/scorer-${self:provider.stage}
     events:
       - sqs:
-          arn: arn:aws:sqs:ap-southeast-2:292374005836:bean-counter-${self:provider.stage}
+          arn: arn:aws:sqs:ap-southeast-2:135314794262:bean-counter-${self:provider.stage}
           batchSize: 1
           enabled: true
 
@@ -67,7 +74,6 @@ functions:
     handler: source/bin/scoreTaker
     name: score-taker-${self:provider.stage}
     description: "Update each voters score"
-    memorySize: 128
     timeout: 20
     reservedConcurrency: 100
     package:
@@ -75,7 +81,7 @@ functions:
         - ./source/bin/scoreTaker
     events:
       - sqs:
-          arn: arn:aws:sqs:ap-southeast-2:292374005836:scorer-${self:provider.stage}
+          arn: arn:aws:sqs:ap-southeast-2:135314794262:scorer-${self:provider.stage}
           batchSize: 1
           enabled: true
 
@@ -84,7 +90,6 @@ functions:
     handler: source/bin/townCrier
     name: town-crier-${self:provider.stage}
     description: "Sends notifications out to users"
-    memorySize: 128
     timeout: 20
     reservedConcurrency: 100
     package:
@@ -92,7 +97,7 @@ functions:
         - ./source/bin/townCrier
     events:
       - sqs:
-          arn: arn:aws:sqs:ap-southeast-2:292374005836:town-crier-${self:provider.stage}
+          arn: arn:aws:sqs:ap-southeast-2:135314794262:town-crier-${self:provider.stage}
           batchSize: 1
           enabled: false
 
@@ -101,8 +106,6 @@ functions:
     handler: source/bin/authorizer
     name: ${self:service}-authorizer-${self:provider.stage}
     description: "Authorizes incoming APIGW requests and verifies the token"
-    memorySize: 128
-    timeout: 10
     environment:
       JWT_VERIFY_KEY: ${env:JWT_VERIFY_KEY}
     package:
@@ -113,8 +116,6 @@ functions:
     handler: source/bin/signup
     name: account-signup-${self:provider.stage}
     description: "Signup with email and password"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/signup
@@ -130,8 +131,6 @@ functions:
     handler: source/bin/signin
     name: account-signin-${self:provider.stage}
     description: "Sign in with email and password"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/signin
@@ -147,8 +146,6 @@ functions:
     handler: source/bin/oauthAuthenticate
     name: oauth-authenticate-${self:provider.stage}
     description: "Retrieves a login URL for a chosen oauth provider"
-    memorySize: 128
-    timeout: 10
     environment:
       OAUTH_CALLBACK_HOST: "http://localhost:8080"
       GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
@@ -173,8 +170,6 @@ functions:
     handler: source/bin/oauthCallback
     name: oauth-callback-${self:provider.stage}
     description: "Provides a url for oauth providers to redirect to"
-    memorySize: 128
-    timeout: 10
     environment:
       OAUTH_CALLBACK_HOST: "http://localhost:8080"
       GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
@@ -200,11 +195,9 @@ functions:
     handler: source/bin/registerDevice
     name: register-device-${self:provider.stage}
     description: "Register a device with a user for notifications"
-    memorySize: 128
-    timeout: 10
     environment:
-      GOOGLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:292374005836:app/GCM/google-fcm-notifications-dev
-      APPLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:292374005836:app/APNS/apple-apn-notifications-dev
+      GOOGLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/GCM/google-fcm-notifications-dev
+      APPLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/APNS/apple-apn-notifications-dev
     package:
       include:
         - ./source/bin/registerDevice
@@ -225,8 +218,6 @@ functions:
     handler: source/bin/deregisterDevice
     name: deregister-device-${self:provider.stage}
     description: "Deregister a device from a user for notifications"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/deregisterDevice
@@ -247,8 +238,6 @@ functions:
     handler: source/bin/getUser
     name: get-user-${self:provider.stage}
     description: "Get a user"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/getUser
@@ -270,8 +259,6 @@ functions:
     handler: source/bin/updateUser
     name: update-user-${self:provider.stage}
     description: "Update a user"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/updateUser
@@ -292,8 +279,6 @@ functions:
     handler: source/bin/getAvatarURL
     name: get-user-avatar-url-${self:provider.stage}
     description: "Generate a pre-signed URL for uploading a users avatar"
-    memorySize: 128
-    timeout: 10
     environment:
       ASSETS_BUCKET: jaypi-${self:provider.stage}-rfacc
     package:
@@ -313,9 +298,7 @@ functions:
   createGroup:
     handler: source/bin/createGroup
     name: create-group-${self:provider.stage}
-    description: "Creates a group"
-    memorySize: 128
-    timeout: 10
+    description: "Create a group"
     package:
       include:
         - ./source/bin/createGroup
@@ -336,8 +319,6 @@ functions:
     handler: source/bin/getGroup
     name: get-group-${self:provider.stage}
     description: "Get a group"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/getGroup
@@ -359,8 +340,6 @@ functions:
     handler: source/bin/getGroupMembers
     name: get-group-members-${self:provider.stage}
     description: "Get the members of a group"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/getGroupMembers
@@ -384,8 +363,6 @@ functions:
     handler: source/bin/updateGroup
     name: update-group-${self:provider.stage}
     description: "Update a group"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/updateGroup
@@ -409,8 +386,6 @@ functions:
     handler: source/bin/joinGroup
     name: join-group-${self:provider.stage}
     description: "Join a group"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/joinGroup
@@ -431,8 +406,6 @@ functions:
     handler: source/bin/leaveGroup
     name: leave-group-${self:provider.stage}
     description: "Leave a group"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/leaveGroup
@@ -450,8 +423,6 @@ functions:
     handler: source/bin/getGroupQR
     name: get-group-qr-${self:provider.stage}
     description: "Get the QR invite for a group"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/getGroupQR
@@ -472,9 +443,7 @@ functions:
   createGame:
     handler: source/bin/createGame
     name: create-game-${self:provider.stage}
-    description: "Creates a game"
-    memorySize: 128
-    timeout: 10
+    description: "Create a game"
     package:
       include:
         - ./source/bin/createGame
@@ -491,9 +460,7 @@ functions:
   updateGame:
     handler: source/bin/updateGame
     name: update-game-${self:provider.stage}
-    description: "Updates a game"
-    memorySize: 128
-    timeout: 10
+    description: "Update a game"
     package:
       include:
         - ./source/bin/updateGame
@@ -511,8 +478,6 @@ functions:
     handler: source/bin/deleteGame
     name: delete-game-${self:provider.stage}
     description: "Delete a game"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/deleteGame
@@ -529,9 +494,7 @@ functions:
   getGames:
     handler: source/bin/getGames
     name: get-games-${self:provider.stage}
-    description: "Get games"
-    memorySize: 128
-    timeout: 10
+    description: "Get games for a group"
     package:
       include:
         - ./source/bin/getGames
@@ -549,9 +512,7 @@ functions:
   createVote:
     handler: source/bin/createVote
     name: create-vote-${self:provider.stage}
-    description: "Create a vote"
-    memorySize: 128
-    timeout: 10
+    description: "Create a song vote"
     package:
       include:
         - ./source/bin/createVote
@@ -571,9 +532,7 @@ functions:
   deleteVote:
     handler: source/bin/deleteVote
     name: delete-vote-${self:provider.stage}
-    description: "Delete a vote"
-    memorySize: 128
-    timeout: 10
+    description: "Delete a song vote"
     package:
       include:
         - ./source/bin/deleteVote
@@ -596,8 +555,6 @@ functions:
     handler: source/bin/songSearch
     name: song-search-${self:provider.stage}
     description: "Search for a song, proxied via Spotify"
-    memorySize: 128
-    timeout: 10
     package:
       include:
         - ./source/bin/songSearch
