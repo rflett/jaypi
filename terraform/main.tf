@@ -1,26 +1,26 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_secretsmanager_secret" "jwt_signing_key" {
-  name = "jaypi-private-key-${terraform.workspace}"
+  name = "jaypi-private-key-${var.environment}"
 }
 
 data "aws_ssm_parameter" "gcm_token" {
-  name            = "/${terraform.workspace}/sns/fcm-delegator-countdown-test-token"
+  name            = "/${var.environment}/sns/fcm-delegator-countdown-test-token"
   with_decryption = true
 }
 
 data "aws_ssm_parameter" "apn_cert" {
-  name            = "/${terraform.workspace}/sns/apple-apn-notifications-cert"
+  name            = "/${var.environment}/sns/apple-apn-notifications-cert"
   with_decryption = true
 }
 
 data "aws_ssm_parameter" "apn_key" {
-  name            = "/${terraform.workspace}/sns/apple-apn-notifications-key"
+  name            = "/${var.environment}/sns/apple-apn-notifications-key"
   with_decryption = true
 }
 
 resource "aws_dynamodb_table" "jaypi" {
-  name           = "jaypi-${terraform.workspace}"
+  name           = "jaypi-${var.environment}"
   billing_mode   = "PROVISIONED"
   hash_key       = "PK"
   range_key      = "SK"
@@ -48,7 +48,7 @@ resource "aws_dynamodb_table" "jaypi" {
 }
 
 resource "aws_iam_role" "jaypi" {
-  name = "lambda-jaypi-${terraform.workspace}"
+  name = "lambda-jaypi-${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -122,25 +122,25 @@ resource "aws_iam_role_policy" "jaypi" {
 }
 
 resource "aws_sqs_queue" "chune_refresh" {
-  name                       = "chune-refresh-${terraform.workspace}"
+  name                       = "chune-refresh-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
 }
 
 resource "aws_sqs_queue" "bean_counter" {
-  name                       = "bean-counter-${terraform.workspace}"
+  name                       = "bean-counter-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
 }
 
 resource "aws_sqs_queue" "scorer" {
-  name                       = "scorer-${terraform.workspace}"
+  name                       = "scorer-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
 }
 
 resource "aws_sqs_queue" "town_crier_dlq" {
-  name                       = "town-crier-dlq-${terraform.workspace}"
+  name                       = "town-crier-dlq-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
   message_retention_seconds  = 604800
@@ -148,7 +148,7 @@ resource "aws_sqs_queue" "town_crier_dlq" {
 }
 
 resource "aws_sqs_queue" "town_crier" {
-  name                       = "town-crier-${terraform.workspace}"
+  name                       = "town-crier-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
 
@@ -159,26 +159,26 @@ resource "aws_sqs_queue" "town_crier" {
 }
 
 resource "aws_sns_platform_application" "gcm_application" {
-  name                         = "google-fcm-notifications-${terraform.workspace}"
+  name                         = "google-fcm-notifications-${var.environment}"
   platform                     = "GCM"
   success_feedback_sample_rate = 100
   platform_credential          = data.aws_ssm_parameter.gcm_token.value
 }
 
 resource "aws_sns_platform_application" "apn_application" {
-  name                         = "apple-apn-notifications-${terraform.workspace}"
+  name                         = "apple-apn-notifications-${var.environment}"
   success_feedback_sample_rate = 100
-  platform                     = terraform.workspace == "production" ? "APNS" : "APNS_SANDBOX"
+  platform                     = var.environment == "production" ? "APNS" : "APNS_SANDBOX"
   platform_credential          = base64decode(data.aws_ssm_parameter.apn_key.value)
   platform_principal           = base64decode(data.aws_ssm_parameter.apn_cert.value)
 }
 
 resource "aws_cloudfront_origin_access_identity" "main" {
-  comment = "jaypi-${terraform.workspace}"
+  comment = "jaypi-${var.environment}"
 }
 
 resource "aws_s3_bucket" "assets" {
-  bucket = "jaypi-assets-${terraform.workspace}"
+  bucket = "jaypi-assets-${var.environment}"
   acl    = "private"
 }
 
