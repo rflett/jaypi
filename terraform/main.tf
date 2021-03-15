@@ -45,6 +45,10 @@ resource "aws_dynamodb_table" "jaypi" {
     write_capacity  = 1
     read_capacity   = 1
   }
+
+  tags = {
+    Environment = var.environment
+  }
 }
 
 resource "aws_iam_role" "jaypi" {
@@ -125,18 +129,33 @@ resource "aws_sqs_queue" "chune_refresh" {
   name                       = "chune-refresh-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
+
+  tags = {
+    Environment = var.environment
+    Component   = "music"
+  }
 }
 
 resource "aws_sqs_queue" "bean_counter" {
   name                       = "bean-counter-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
+
+  tags = {
+    Environment = var.environment
+    Component   = "scoring"
+  }
 }
 
 resource "aws_sqs_queue" "scorer" {
   name                       = "scorer-${var.environment}"
   delay_seconds              = 0
   visibility_timeout_seconds = 30
+
+  tags = {
+    Environment = var.environment
+    Component   = "scoring"
+  }
 }
 
 resource "aws_sqs_queue" "town_crier_dlq" {
@@ -145,6 +164,11 @@ resource "aws_sqs_queue" "town_crier_dlq" {
   visibility_timeout_seconds = 30
   message_retention_seconds  = 604800
   receive_wait_time_seconds  = 20
+
+  tags = {
+    Environment = var.environment
+    Component   = "notifications"
+  }
 }
 
 resource "aws_sqs_queue" "town_crier" {
@@ -156,6 +180,11 @@ resource "aws_sqs_queue" "town_crier" {
     deadLetterTargetArn = aws_sqs_queue.town_crier_dlq.arn
     maxReceiveCount     = 1
   })
+
+  tags = {
+    Environment = var.environment
+    Component   = "notifications"
+  }
 }
 
 resource "aws_sns_platform_application" "gcm_application" {
@@ -163,6 +192,11 @@ resource "aws_sns_platform_application" "gcm_application" {
   platform                     = "GCM"
   success_feedback_sample_rate = 100
   platform_credential          = data.aws_ssm_parameter.gcm_token.value
+
+  tags = {
+    Environment = var.environment
+    Component   = "notifications"
+  }
 }
 
 resource "aws_sns_platform_application" "apn_application" {
@@ -171,6 +205,11 @@ resource "aws_sns_platform_application" "apn_application" {
   platform                     = var.environment == "production" ? "APNS" : "APNS_SANDBOX"
   platform_credential          = base64decode(data.aws_ssm_parameter.apn_key.value)
   platform_principal           = base64decode(data.aws_ssm_parameter.apn_cert.value)
+
+  tags = {
+    Environment = var.environment
+    Component   = "notifications"
+  }
 }
 
 resource "aws_cloudfront_origin_access_identity" "main" {
