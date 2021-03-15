@@ -192,11 +192,6 @@ resource "aws_sns_platform_application" "gcm_application" {
   platform                     = "GCM"
   success_feedback_sample_rate = 100
   platform_credential          = data.aws_ssm_parameter.gcm_token.value
-
-  tags = {
-    Environment = var.environment
-    Component   = "notifications"
-  }
 }
 
 resource "aws_sns_platform_application" "apn_application" {
@@ -205,11 +200,6 @@ resource "aws_sns_platform_application" "apn_application" {
   platform                     = var.environment == "production" ? "APNS" : "APNS_SANDBOX"
   platform_credential          = base64decode(data.aws_ssm_parameter.apn_key.value)
   platform_principal           = base64decode(data.aws_ssm_parameter.apn_cert.value)
-
-  tags = {
-    Environment = var.environment
-    Component   = "notifications"
-  }
 }
 
 resource "aws_cloudfront_origin_access_identity" "main" {
