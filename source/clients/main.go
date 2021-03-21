@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -19,5 +20,5 @@ var (
 	SecretsClient    = secretsmanager.New(awsSession)
 	S3Client         = s3.New(awsSession)
 	DynamoTable      = os.Getenv("JAYPI_TABLE")
-	JWTSigningSecret = "jjj-api-private-signing-key"
+	JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", os.Getenv("APP_ENV"))
 )

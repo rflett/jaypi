@@ -8,7 +8,7 @@ provider:
   name: aws
   runtime: go1.x
   region: ap-southeast-2
-  stage: ${opt:staging, 'staging'}
+  stage: ${opt:stage, 'staging'}
   lambdaHashingVersion: 20201221
   memorySize: 128
   timeout: 10
@@ -16,12 +16,13 @@ provider:
     name: delegator-countdown-sls
     serverSideEncryption: AES256
   iam:
-    role: arn:aws:iam::135314794262:role/lambda-jaypi-${opt:staging, 'staging'}
+    role: arn:aws:iam::135314794262:role/lambda-jaypi-${opt:stage, 'staging'}
   environment:
-    JAYPI_TABLE: jaypi-${opt:staging, 'staging'}
+    JAYPI_TABLE: jaypi-${opt:stage, 'staging'}
+    APP_ENV: ${opt:stage, 'staging'}
   apigateway:
     shouldStartNameWithService: true
-    description: ${opt:staging, 'staging'}-jaypi-apigw
+    description: ${opt:stage, 'staging'}-jaypi-apigw
 
 package:
   individually: true
