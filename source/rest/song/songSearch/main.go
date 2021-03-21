@@ -21,12 +21,13 @@ var (
 		ClientSecret: os.Getenv("SPOTIFY_SECRET_ID"),
 		TokenURL:     spotify.TokenURL,
 	}
-	client              = spotify.Client{}
-	songs  []types.Song = nil
+	client = spotify.Client{}
 )
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var songs []types.Song = nil
+
 	query := request.QueryStringParameters["query"]
 
 	// search spotify
