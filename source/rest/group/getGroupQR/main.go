@@ -18,7 +18,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// check user is in the group
 	if ok, _ := services.UserIsInGroup(authContext.UserID, groupID); !ok {
-		return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusUnauthorized)
+		return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
 	}
 
 	// get group QR code

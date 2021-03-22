@@ -22,7 +22,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// the user needs to be the group owner
 	if ok, _ := services.UserIsGroupOwner(authContext.UserID, groupID); !ok {
-		return services.ReturnError(errors.New("You have to be the group owner to do this"), http.StatusUnauthorized)
+		return services.ReturnError(errors.New("You have to be the group owner to do this"), http.StatusForbidden)
 	}
 
 	// delete
