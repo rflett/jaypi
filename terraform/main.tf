@@ -304,6 +304,15 @@ resource "aws_acm_certificate_validation" "api" {
   validation_record_fqdns = [for record in aws_route53_record.api_validation : record.fqdn]
 }
 
+resource "aws_api_gateway_domain_name" "api" {
+  domain_name              = aws_acm_certificate.api.domain_name
+  regional_certificate_arn = aws_acm_certificate_validation.api.certificate_arn
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+}
+
 resource "aws_cloudfront_distribution" "assets" {
   enabled             = true
   comment             = "Web Assets ${var.environment}"
