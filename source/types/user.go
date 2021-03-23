@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/dgrijalva/jwt-go"
+	sentryGo "github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -161,6 +162,15 @@ func (u *User) Create() (status int, error error) {
 	}
 
 	// ok!
+	sentryGo.ConfigureScope(func(scope *sentryGo.Scope) {
+		scope.SetUser(sentryGo.User{
+			ID:        u.UserID,
+			Username:  *u.AuthProviderId,
+			IPAddress: "{{auto}}",
+		})
+		scope.SetTag("AuthProvider", *u.AuthProvider)
+	})
+	sentryGo.CaptureMessage("User signed up!")
 	return http.StatusCreated, nil
 }
 

@@ -190,6 +190,7 @@ func ReturnJSON(body interface{}, status int) (events.APIGatewayProxyResponse, e
 
 // ReturnError returns an error from APIGW in a standard format
 func ReturnError(err error, status int) (events.APIGatewayProxyResponse, error) {
+	sentryGo.CaptureException(err)
 	logger.Log.Info().Str("status", string(rune(status))).Str("err", err.Error()).Msg("Returning error from APIGW")
 	body := map[string]interface{}{
 		"success": false,
