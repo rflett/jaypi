@@ -241,7 +241,7 @@ resource "aws_s3_bucket_policy" "assets" {
 resource "aws_acm_certificate" "assets" {
   provider = aws.north_virginia
 
-  domain_name       = "assets-${var.environment}.jaypi.online"
+  domain_name       = var.environment == "production" ? "assets.jaypi.online" : "assets.${var.environment}.jaypi.online"
   validation_method = "DNS"
 
   tags = {
