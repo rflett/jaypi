@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sns"
+	sentryGo "github.com/getsentry/sentry-go"
 	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -102,11 +103,25 @@ func GetOauthProvider(providerName string) (*types.OauthProvider, error) {
 
 // GetAuthorizerContext returns the AuthorizerContext from the APIGatewayProxyRequestContext
 func GetAuthorizerContext(ctx events.APIGatewayProxyRequestContext) *types.AuthorizerContext {
+	var AuthProvider = ctx.Authorizer["AuthProvider"].(string)
+	var AuthProviderId = ctx.Authorizer["AuthProviderId"].(string)
+	var Name = ctx.Authorizer["Name"].(string)
+	var UserID = ctx.Authorizer["UserID"].(string)
+
+	sentryGo.ConfigureScope(func(scope *sentryGo.Scope) {
+		scope.SetUser(sentryGo.User{
+			ID:        UserID,
+			Username:  AuthProviderId,
+			IPAddress: "{{auto}}",
+		})
+		scope.SetTag("AuthProvider", AuthProvider)
+	})
+
 	return &types.AuthorizerContext{
-		AuthProvider:   ctx.Authorizer["AuthProvider"].(string),
-		AuthProviderId: ctx.Authorizer["AuthProviderId"].(string),
-		Name:           ctx.Authorizer["Name"].(string),
-		UserID:         ctx.Authorizer["UserID"].(string),
+		AuthProvider:   AuthProvider,
+		AuthProviderId: AuthProviderId,
+		Name:           Name,
+		UserID:         UserID,
 	}
 }
 

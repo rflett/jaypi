@@ -20,6 +20,9 @@ provider:
   environment:
     JAYPI_TABLE: jaypi-${opt:stage, 'staging'}
     APP_ENV: ${opt:stage, 'staging'}
+    SENTRY_DSN: "https://460777244deb48d0bf77c46d5b9fda34@o341469.ingest.sentry.io/5688456"
+    SENTRY_ENVIRONMENT: ${opt:stage, 'staging'}
+    SENTRY_RELEASE: ${opt:release}
   apigateway:
     shouldStartNameWithService: true
     description: ${opt:stage, 'staging'}-jaypi-apigw
@@ -28,6 +31,9 @@ package:
   individually: true
   exclude:
     - ./**
+  include:
+    - ./source/**
+    - '!./source/bin/**'
 
 functions:
   # Chune Machine
@@ -45,6 +51,7 @@ functions:
       SPOTIFY_SECRET_ID: ${env:SPOTIFY_SECRET_ID}
       REFRESH_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/135314794262/chune-refresh-${self:provider.stage}
       COUNTER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/135314794262/bean-counter-${self:provider.stage}
+      FUNCTION_NAME: chune-machine
     tags:
       Environment: ${self:provider.stage}
       Component: music
@@ -68,6 +75,7 @@ functions:
         - ./source/bin/beanCounter
     environment:
       SCORER_QUEUE: https://sqs.ap-southeast-2.amazonaws.com/135314794262/scorer-${self:provider.stage}
+      FUNCTION_NAME: bean-counter
     tags:
       Environment: ${self:provider.stage}
       Component: scoring
@@ -88,6 +96,8 @@ functions:
     package:
       include:
         - ./source/bin/scoreTaker
+    environment:
+      FUNCTION_NAME: score-taker
     tags:
       Environment: ${self:provider.stage}
       Component: scoring
@@ -108,6 +118,8 @@ functions:
     package:
       include:
         - ./source/bin/townCrier
+    environment:
+      FUNCTION_NAME: town-crier
     tags:
       Environment: ${self:provider.stage}
       Component: notifications
@@ -125,6 +137,7 @@ functions:
     description: "Authorizes incoming APIGW requests and verifies the token"
     environment:
       JWT_VERIFY_KEY: ${env:JWT_VERIFY_KEY}
+      FUNCTION_NAME: authorizer
     tags:
       Environment: ${self:provider.stage}
       Component: authentication
@@ -137,6 +150,8 @@ functions:
     handler: source/bin/signup
     name: account-signup-${self:provider.stage}
     description: "Signup with email and password"
+    environment:
+      FUNCTION_NAME: signup
     package:
       include:
         - ./source/bin/signup
@@ -156,6 +171,8 @@ functions:
     handler: source/bin/signin
     name: account-signin-${self:provider.stage}
     description: "Sign in with email and password"
+    environment:
+      FUNCTION_NAME: signin
     package:
       include:
         - ./source/bin/signin
@@ -183,6 +200,7 @@ functions:
       FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
       GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
       GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
+      FUNCTION_NAME: oauth-authenticate
     package:
       include:
         - ./source/bin/oauthAuthenticate
@@ -211,6 +229,7 @@ functions:
       FACEBOOK_SECRET_ID: ${env:FACEBOOK_SECRET_ID}
       GITHUB_CLIENT_ID: ${env:GH_CLIENT_ID}
       GITHUB_SECRET_ID: ${env:GH_SECRET_ID}
+      FUNCTION_NAME: oauth-callback
     package:
       include:
         - ./source/bin/oauthCallback
@@ -235,6 +254,7 @@ functions:
     environment:
       GOOGLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/GCM/google-fcm-notifications-dev
       APPLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/APNS/apple-apn-notifications-dev
+      FUNCTION_NAME: register-device
     package:
       include:
         - ./source/bin/registerDevice
@@ -259,6 +279,8 @@ functions:
     handler: source/bin/deregisterDevice
     name: deregister-device-${self:provider.stage}
     description: "Deregister a device from a user for notifications"
+    environment:
+      FUNCTION_NAME: deregister-device
     package:
       include:
         - ./source/bin/deregisterDevice
@@ -283,6 +305,8 @@ functions:
     handler: source/bin/getUser
     name: get-user-${self:provider.stage}
     description: "Get a user"
+    environment:
+      FUNCTION_NAME: get-user
     package:
       include:
         - ./source/bin/getUser
@@ -308,6 +332,8 @@ functions:
     handler: source/bin/updateUser
     name: update-user-${self:provider.stage}
     description: "Update a user"
+    environment:
+      FUNCTION_NAME: update-user
     package:
       include:
         - ./source/bin/updateUser
@@ -334,6 +360,7 @@ functions:
     description: "Generate a pre-signed URL for uploading a users avatar"
     environment:
       ASSETS_BUCKET: jaypi-${self:provider.stage}-rfacc
+      FUNCTION_NAME: get-user-avatar-url
     package:
       include:
         - ./source/bin/getAvatarURL
@@ -356,6 +383,8 @@ functions:
     handler: source/bin/createGroup
     name: create-group-${self:provider.stage}
     description: "Create a group"
+    environment:
+      FUNCTION_NAME: create-group
     package:
       include:
         - ./source/bin/createGroup
@@ -380,6 +409,8 @@ functions:
     handler: source/bin/getGroup
     name: get-group-${self:provider.stage}
     description: "Get a group"
+    environment:
+      FUNCTION_NAME: get-group
     package:
       include:
         - ./source/bin/getGroup
@@ -405,6 +436,8 @@ functions:
     handler: source/bin/getGroupMembers
     name: get-group-members-${self:provider.stage}
     description: "Get the members of a group"
+    environment:
+      FUNCTION_NAME: get-group-members
     package:
       include:
         - ./source/bin/getGroupMembers
@@ -432,6 +465,8 @@ functions:
     handler: source/bin/updateGroup
     name: update-group-${self:provider.stage}
     description: "Update a group"
+    environment:
+      FUNCTION_NAME: update-group
     package:
       include:
         - ./source/bin/updateGroup
@@ -459,6 +494,8 @@ functions:
     handler: source/bin/joinGroup
     name: join-group-${self:provider.stage}
     description: "Join a group"
+    environment:
+      FUNCTION_NAME: join-group
     package:
       include:
         - ./source/bin/joinGroup
@@ -483,6 +520,8 @@ functions:
     handler: source/bin/leaveGroup
     name: leave-group-${self:provider.stage}
     description: "Leave a group"
+    environment:
+      FUNCTION_NAME: leave-group
     package:
       include:
         - ./source/bin/leaveGroup
@@ -504,6 +543,8 @@ functions:
     handler: source/bin/getGroupQR
     name: get-group-qr-${self:provider.stage}
     description: "Get the QR invite for a group"
+    environment:
+      FUNCTION_NAME: get-group-qr
     package:
       include:
         - ./source/bin/getGroupQR
@@ -529,6 +570,8 @@ functions:
     handler: source/bin/createGame
     name: create-game-${self:provider.stage}
     description: "Create a game"
+    environment:
+      FUNCTION_NAME: create-game
     package:
       include:
         - ./source/bin/createGame
@@ -550,6 +593,8 @@ functions:
     handler: source/bin/updateGame
     name: update-game-${self:provider.stage}
     description: "Update a game"
+    environment:
+      FUNCTION_NAME: update-game
     package:
       include:
         - ./source/bin/updateGame
@@ -571,6 +616,8 @@ functions:
     handler: source/bin/deleteGame
     name: delete-game-${self:provider.stage}
     description: "Delete a game"
+    environment:
+      FUNCTION_NAME: delete-game
     package:
       include:
         - ./source/bin/deleteGame
@@ -592,6 +639,8 @@ functions:
     handler: source/bin/getGames
     name: get-games-${self:provider.stage}
     description: "Get games for a group"
+    environment:
+      FUNCTION_NAME: get-games
     package:
       include:
         - ./source/bin/getGames
@@ -614,6 +663,8 @@ functions:
     handler: source/bin/createVote
     name: create-vote-${self:provider.stage}
     description: "Create a song vote"
+    environment:
+      FUNCTION_NAME: create-vote
     package:
       include:
         - ./source/bin/createVote
@@ -638,6 +689,8 @@ functions:
     handler: source/bin/deleteVote
     name: delete-vote-${self:provider.stage}
     description: "Delete a song vote"
+    environment:
+      FUNCTION_NAME: delete-vote
     package:
       include:
         - ./source/bin/deleteVote
@@ -674,6 +727,7 @@ functions:
     environment:
       SPOTIFY_CLIENT_ID: ${env:SPOTIFY_CLIENT_ID}
       SPOTIFY_SECRET_ID: ${env:SPOTIFY_SECRET_ID}
+      FUNCTION_NAME: song-search
     events:
       - http:
           path: search
