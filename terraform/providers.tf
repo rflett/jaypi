@@ -21,3 +21,9 @@ provider "aws" {
   region  = "ap-southeast-2"
   profile = "countdown"
 }
+
+provider "aws" {
+  alias   = "north_virginia"
+  region  = "us-east-1"
+  profile = "countdown"
+}

@@ -19,6 +19,10 @@ data "aws_ssm_parameter" "apn_key" {
   with_decryption = true
 }
 
+data "aws_route53_zone" "jaypi" {
+  name = var.environment == "production" ? "jaypi.online." : "${var.environment}.jaypi.online."
+}
+
 resource "aws_dynamodb_table" "jaypi" {
   name           = "jaypi-${var.environment}"
   billing_mode   = "PROVISIONED"
@@ -232,4 +236,98 @@ resource "aws_s3_bucket_policy" "assets" {
       }
     }]
   })
+}
+
+resource "aws_acm_certificate" "assets" {
+  provider = aws.north_virginia
+
+  domain_name       = "assets-${var.environment}.jaypi.online"
+  validation_method = "DNS"
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_route53_record" "assets_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.assets.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  ttl             = 60
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  zone_id         = data.aws_route53_zone.jaypi.zone_id
+}
+
+resource "aws_acm_certificate_validation" "assets" {
+  certificate_arn         = aws_acm_certificate.assets.arn
+  validation_record_fqdns = [for record in aws_route53_record.assets_validation : record.fqdn]
+}
+
+resource "aws_cloudfront_distribution" "assets" {
+  enabled             = true
+  comment             = "Web Assets ${var.environment}"
+  default_root_object = "index.html"
+  price_class         = "PriceClass_All"
+  http_version        = "http2"
+  is_ipv6_enabled     = true
+  aliases             = [aws_s3_bucket.assets.bucket]
+
+  default_cache_behavior {
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3Origin"
+    viewer_protocol_policy = "redirect-to-https"
+    max_ttl                = 604800
+    min_ttl                = 0
+    default_ttl            = 86400
+    compress               = true
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  origin {
+    domain_name = aws_s3_bucket.assets.bucket_domain_name
+    origin_id   = "S3Origin"
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.main.cloudfront_access_identity_path
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.assets.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.1_2016"
+  }
+}
+
+resource "aws_route53_record" "assets" {
+  type    = "A"
+  name    = aws_acm_certificate.assets.domain_name
+  zone_id = data.aws_route53_zone.jaypi.zone_id
+
+  alias {
+    evaluate_target_health = false
+    name                   = aws_cloudfront_distribution.assets.domain_name
+    zone_id                = aws_cloudfront_distribution.assets.hosted_zone_id
+  }
 }
