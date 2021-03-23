@@ -249,9 +249,35 @@ resource "aws_acm_certificate" "assets" {
   }
 }
 
+resource "aws_acm_certificate" "api" {
+  domain_name       = var.environment == "production" ? "api.jaypi.online" : "api.${var.environment}.jaypi.online"
+  validation_method = "DNS"
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
 resource "aws_route53_record" "assets_validation" {
   for_each = {
     for dvo in aws_acm_certificate.assets.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  ttl             = 60
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  zone_id         = data.aws_route53_zone.jaypi.zone_id
+}
+
+resource "aws_route53_record" "api_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -271,6 +297,11 @@ resource "aws_acm_certificate_validation" "assets" {
 
   certificate_arn         = aws_acm_certificate.assets.arn
   validation_record_fqdns = [for record in aws_route53_record.assets_validation : record.fqdn]
+}
+
+resource "aws_acm_certificate_validation" "api" {
+  certificate_arn         = aws_acm_certificate.api.arn
+  validation_record_fqdns = [for record in aws_route53_record.api_validation : record.fqdn]
 }
 
 resource "aws_cloudfront_distribution" "assets" {
