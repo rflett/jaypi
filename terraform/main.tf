@@ -280,7 +280,7 @@ resource "aws_cloudfront_distribution" "assets" {
   price_class         = "PriceClass_All"
   http_version        = "http2"
   is_ipv6_enabled     = true
-  aliases             = [aws_s3_bucket.assets.bucket]
+  aliases             = [aws_acm_certificate.assets.domain_name]
 
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
