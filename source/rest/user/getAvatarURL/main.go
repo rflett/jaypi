@@ -17,10 +17,6 @@ var (
 	bucket = os.Getenv("ASSETS_BUCKET")
 )
 
-type responseBody struct {
-	Url string `json:"url"`
-}
-
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	authContext := services.GetAuthorizerContext(request.RequestContext)
@@ -50,8 +46,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// response
-	body := responseBody{Url: urlStr}
-	return services.ReturnJSON(body, http.StatusCreated)
+	return services.ReturnJSON(urlStr, http.StatusCreated)
 }
 
 func main() {
