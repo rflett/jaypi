@@ -20,21 +20,21 @@ import (
 
 // User is a User of the application
 type User struct {
-	PK             string  `json:"-" dynamodbav:"PK"`
-	SK             string  `json:"-" dynamodbav:"SK"`
-	UserID         string  `json:"userID"`
-	Name           string  `json:"name"`
-	Email          string  `json:"email"`
-	Points         int     `json:"points"`
-	CreatedAt      string  `json:"createdAt"`
-	GroupID        *string `json:"groupID"`
-	NickName       *string `json:"nickName"`
-	AuthProvider   *string `json:"authProvider"`
-	AuthProviderId *string `json:"authProviderId"`
-	AvatarUrl      *string `json:"avatarUrl"`
-	Votes          *[]Song `json:"votes"`
-	UpdatedAt      *string `json:"updatedAt"`
-	Password       *string `json:"-" dynamodbav:"password"`
+	PK             string    `json:"-" dynamodbav:"PK"`
+	SK             string    `json:"-" dynamodbav:"SK"`
+	UserID         string    `json:"userID"`
+	Name           string    `json:"name"`
+	Email          string    `json:"email"`
+	Points         int       `json:"points"`
+	CreatedAt      string    `json:"createdAt"`
+	GroupIDs       *[]string `json:"groups" dynamodbav:",stringset"`
+	NickName       *string   `json:"nickName"`
+	AuthProvider   *string   `json:"authProvider"`
+	AuthProviderId *string   `json:"authProviderId"`
+	AvatarUrl      *string   `json:"avatarUrl"`
+	Votes          *[]Song   `json:"votes" dynamodbav:",omitemptyelem"`
+	UpdatedAt      *string   `json:"updatedAt"`
+	Password       *string   `json:"-" dynamodbav:"password"`
 }
 
 // UserClaims are the custom claims that embedded into the JWT token for authentication
@@ -182,13 +182,13 @@ func (u *User) Update() (status int, error error) {
 
 	// group ID may be nil
 	var gi *dynamodb.AttributeValue
-	if u.GroupID == nil {
+	if u.GroupIDs == nil {
 		gi = &dynamodb.AttributeValue{
 			NULL: aws.Bool(true),
 		}
 	} else {
 		gi = &dynamodb.AttributeValue{
-			S: u.GroupID,
+			SS: aws.StringSlice(*u.GroupIDs),
 		}
 	}
 
@@ -197,7 +197,7 @@ func (u *User) Update() (status int, error error) {
 		ExpressionAttributeNames: map[string]*string{
 			"#NN": aws.String("nickName"),
 			"#UA": aws.String("updatedAt"),
-			"#GI": aws.String("groupID"),
+			"#GI": aws.String("groupIDs"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":nn": {
@@ -600,7 +600,7 @@ func (u *User) UpdatePoints(points int) error {
 }
 
 // LeaveGroup removes the User from a Group
-func (u *User) LeaveGroup() (status int, error error) {
+func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -608,29 +608,32 @@ func (u *User) LeaveGroup() (status int, error error) {
 				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, *u.GroupID)),
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, *u.GroupIDs)),
 			},
 		},
 		TableName: &clients.DynamoTable,
 	}
 
-	// delete from table
+	// delete membership from table
 	_, err := clients.DynamoClient.DeleteItem(input)
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("groupID", *u.GroupID).Str("userID", u.UserID).Msg("Error removing user from group")
+		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", u.UserID).Msg("Error removing user from group")
 		return http.StatusInternalServerError, err
 	}
 
-	// remove groupID attribute from the user
-	logger.Log.Info().Str("userID", u.UserID).Str("groupID", *u.GroupID).Msg("User left group")
-	u.GroupID = nil
+	// remove groupID from the user's groups
+	if err = removeFromSlice(u.GroupIDs, &groupID); err != nil {
+		return http.StatusNotFound, err
+	}
+
+	// update user
 	if status, err = u.Update(); err != nil {
 		return status, err
 	}
 
-	logger.Log.Info().Str("userID", u.UserID).Msg("User left group")
+	logger.Log.Info().Str("userID", u.UserID).Str("groupID", groupID).Msg("User left group")
 	return http.StatusNoContent, nil
 }
 
@@ -705,4 +708,27 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	}
 
 	return &endpoints, nil
+}
+
+// removeFromSlice removes the el from the slice
+func removeFromSlice(slice *[]string, el *string) error {
+	// find the position of the el in the slice
+	var position int
+	for i, val := range *slice {
+		if val == *el {
+			position = i
+			break
+		}
+	}
+	if &position == nil {
+		return errors.New("couldn't find el in slice")
+	}
+
+	// copy last element to index i.
+	(*slice)[position] = (*slice)[len(*slice)-1]
+	// erase last element (write zero value).
+	(*slice)[len(*slice)-1] = ""
+	// truncate slice
+	*slice = (*slice)[:len(*slice)-1]
+	return nil
 }
