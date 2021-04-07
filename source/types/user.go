@@ -608,7 +608,7 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, *u.GroupIDs)),
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, groupID)),
 			},
 		},
 		TableName: &clients.DynamoTable,
