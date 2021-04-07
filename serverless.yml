@@ -505,7 +505,7 @@ functions:
       Type: integration
     events:
       - http:
-          path: group/membership
+          path: group/members
           method: post
           request:
             schema:
@@ -531,7 +531,7 @@ functions:
       Type: integration
     events:
       - http:
-          path: group/{groupId}/membership
+          path: group/{groupId}/members
           method: delete
           authorizer:
             name: authorizer
