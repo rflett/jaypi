@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
-	"jjj.rflett.com/jjj-api/services"
 	"net/http"
 	"strconv"
 	"time"
@@ -625,7 +624,7 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	}
 
 	// remove groupID from the user's groups
-	if err = services.RemoveFromSlice(u.GroupIDs, &groupID); err != nil {
+	if err = removeFromSlice(u.GroupIDs, &groupID); err != nil {
 		return http.StatusNotFound, err
 	}
 
@@ -709,4 +708,27 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	}
 
 	return &endpoints, nil
+}
+
+// removeFromSlice removes the el from the slice
+func removeFromSlice(slice *[]string, el *string) error {
+	// find the position of the el in the slice
+	var position int
+	for i, val := range *slice {
+		if val == *el {
+			position = i
+			break
+		}
+	}
+	if &position == nil {
+		return errors.New("couldn't find el in slice")
+	}
+
+	// copy last element to index i.
+	(*slice)[position] = (*slice)[len(*slice)-1]
+	// erase last element (write zero value).
+	(*slice)[len(*slice)-1] = ""
+	// truncate slice
+	*slice = (*slice)[:len(*slice)-1]
+	return nil
 }

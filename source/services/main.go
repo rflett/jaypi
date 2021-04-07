@@ -198,26 +198,3 @@ func ReturnError(err error, status int) (events.APIGatewayProxyResponse, error) 
 	}
 	return ReturnJSON(body, status)
 }
-
-// RemoveFromSlice removes the el from the slice
-func RemoveFromSlice(slice *[]string, el *string) error {
-	// find the position of the el in the slice
-	var position int
-	for i, val := range *slice {
-		if val == *el {
-			position = i
-			break
-		}
-	}
-	if &position == nil {
-		return errors.New("couldn't find el in slice")
-	}
-
-	// copy last element to index i.
-	(*slice)[position] = (*slice)[len(*slice)-1]
-	// erase last element (write zero value).
-	(*slice)[len(*slice)-1] = ""
-	// truncate slice
-	*slice = (*slice)[:len(*slice)-1]
-	return nil
-}
