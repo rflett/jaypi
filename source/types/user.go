@@ -197,7 +197,7 @@ func (u *User) Update() (status int, error error) {
 		ExpressionAttributeNames: map[string]*string{
 			"#NN": aws.String("nickName"),
 			"#UA": aws.String("updatedAt"),
-			"#GI": aws.String("groupID"),
+			"#GI": aws.String("groupIDs"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":nn": {
