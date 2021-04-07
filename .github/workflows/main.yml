@@ -6,6 +6,7 @@ on:
     paths:
       - source/**
       - serverless.yml
+      - .github/workflows/main.yml
 
 env:
   AWS_DEFAULT_REGION: ap-southeast-2
