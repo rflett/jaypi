@@ -25,7 +25,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// users can get themselves without doing the group check
 	if authContext.UserID != userID {
 		// check user is in the group
-		if ok, _ := services.UserIsInGroup(authContext.UserID, *user.GroupID); !ok {
+		if ok, _ := services.UserIsInGroup(authContext.UserID, *user.GroupIDs); !ok {
 			return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
 		}
 	}

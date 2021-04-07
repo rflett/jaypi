@@ -531,7 +531,7 @@ functions:
       Type: integration
     events:
       - http:
-          path: group/membership
+          path: group/{groupId}/membership
           method: delete
           authorizer:
             name: authorizer

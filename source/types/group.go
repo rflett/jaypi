@@ -37,6 +37,14 @@ type GroupCode struct {
 	Code    string `json:"code"`
 }
 
+// groupMember represents a users membership in a group
+type groupMember struct {
+	PK      string `json:"-" dynamodbav:"PK"`
+	SK      string `json:"-" dynamodbav:"SK"`
+	UserID  string `json:"userID"`
+	GroupID string `json:"groupID"`
+}
+
 // Create the group and save it to the database
 func (g *Group) Create() (status int, error error) {
 	// set fields
@@ -209,10 +217,10 @@ func (g *Group) Get() (status int, error error) {
 
 // AddUser a user to a group
 func (g *Group) AddUser(userID string) (status int, err error) {
-	member := User{
+	member := groupMember{
 		PK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
 		SK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
-		GroupID: &g.GroupID,
+		GroupID: g.GroupID,
 		UserID:  userID,
 	}
 
@@ -222,10 +230,19 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 		return status, err
 	}
 
-	// leave their current group
-	if user.GroupID != nil {
-		if status, err = user.LeaveGroup(); err != nil {
-			return status, err
+	if user.GroupIDs != nil {
+		// check if user has reached the group limit
+		if len(*user.GroupIDs) == GroupMembershipLimit {
+			return http.StatusBadRequest, errors.New(fmt.Sprintf(
+				"group limit reached. you can only be a member of up to %d groups", GroupMembershipLimit),
+			)
+		}
+
+		// check if user is already in the group
+		for _, groupId := range *user.GroupIDs {
+			if groupId == g.GroupID {
+				return http.StatusConflict, errors.New("user already a member of the group")
+			}
 		}
 	}
 
@@ -243,7 +260,11 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 	}
 
 	// update member with new group id
-	user.GroupID = &g.GroupID
+	if user.GroupIDs == nil {
+		user.GroupIDs = &[]string{g.GroupID}
+	} else {
+		*user.GroupIDs = append(*user.GroupIDs, g.GroupID)
+	}
 	if status, err = user.Update(); err != nil {
 		return status, err
 	}

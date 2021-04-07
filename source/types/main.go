@@ -25,6 +25,7 @@ const (
 	SNSPlatformGoogle          = "android"
 	SNSPlatformApple           = "ios"
 	UserAvatarDomain           = "assets.jaypi.com.au"
+	GroupMembershipLimit       = 10
 )
 
 type PlayCount struct {
