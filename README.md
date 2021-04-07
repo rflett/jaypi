@@ -23,7 +23,7 @@ Install the required Go modules with `go mod download` in the `source/` director
 
 ## Deployment
 
-Push to GitHub and the workflow will build and deploy on push to the `main` and `feature/**` branches.
+Push to GitHub and the workflow will build and deploy on push to the `main` branch or via a manual run.
 
 
 ---

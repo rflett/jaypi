@@ -234,14 +234,14 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 		// check if user has reached the group limit
 		if len(*user.GroupIDs) == GroupMembershipLimit {
 			return http.StatusBadRequest, errors.New(fmt.Sprintf(
-				"group limit reached. you can only be a member of up to %d groups", GroupMembershipLimit),
+				"Group limit reached - you can only be a member of up to %d groups.", GroupMembershipLimit),
 			)
 		}
 
 		// check if user is already in the group
 		for _, groupId := range *user.GroupIDs {
 			if groupId == g.GroupID {
-				return http.StatusConflict, errors.New("user already a member of the group")
+				return http.StatusConflict, errors.New("User is already a member of this group")
 			}
 		}
 	}
