@@ -320,6 +320,8 @@ functions:
           method: get
           request:
             parameters:
+              querystrings:
+                withVotes: true
               paths:
                 userId: true
           authorizer:

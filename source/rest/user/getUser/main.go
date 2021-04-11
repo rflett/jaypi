@@ -7,6 +7,7 @@ import (
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
+	"strconv"
 )
 
 // Handler is our handle on life
@@ -15,6 +16,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get userId from pathParameters
 	userID := request.PathParameters["userId"]
+
+	// whether to get the members votes as well
+	withVotes, _ := strconv.ParseBool(request.QueryStringParameters["withVotes"])
 
 	// get user
 	user := types.User{UserID: userID}
@@ -34,6 +38,15 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}
 		if !isInGroup {
 			return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
+		}
+	}
+
+	// get their votes if required
+	if withVotes {
+		// get the members votes
+		votes, voteErr := user.GetVotes()
+		if voteErr == nil {
+			user.Votes = &votes
 		}
 	}
 
