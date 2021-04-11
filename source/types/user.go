@@ -345,7 +345,7 @@ func (u *User) GetVotes() ([]Song, error) {
 				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 			":sk": {
-				S: aws.String("SONG#"),
+				S: aws.String(fmt.Sprintf("%s#", SongPrimaryKey)),
 			},
 		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
@@ -363,7 +363,7 @@ func (u *User) GetVotes() ([]Song, error) {
 	for _, vote := range userVotes.Items {
 		song := Song{}
 		if err = dynamodbattribute.UnmarshalMap(vote, &song); err != nil {
-			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to song")
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to songVote")
 			continue
 		}
 		if err = song.Get(); err != nil {
