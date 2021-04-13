@@ -15,7 +15,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get groupID from pathParameters
 	groupID := request.PathParameters["groupId"]
-	userID := request.PathParameters["userID"]
+	userID := request.PathParameters["userId"]
 
 	// the user needs to be the group owner
 	if authContext.UserID != userID {
