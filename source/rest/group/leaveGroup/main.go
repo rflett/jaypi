@@ -15,14 +15,27 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get groupID from pathParameters
 	groupID := request.PathParameters["groupId"]
+	userID := request.PathParameters["userID"]
 
-	// check user is in the group
+	// the user needs to be the group owner
+	if authContext.UserID != userID {
+		if ok, _ := services.UserIsGroupOwner(authContext.UserID, groupID); !ok {
+			return services.ReturnError(errors.New("You have to be the group owner to do this"), http.StatusForbidden)
+		}
+	}
+
+	// check requesting user is in the group
 	if ok, _ := services.UserIsInGroup(authContext.UserID, groupID); !ok {
 		return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
 	}
 
+	// check user to remove is in the group
+	if ok, _ := services.UserIsInGroup(userID, groupID); !ok {
+		return services.ReturnError(errors.New("Cannot remove non-member from group"), http.StatusForbidden)
+	}
+
 	// get the user
-	user := types.User{UserID: authContext.UserID}
+	user := types.User{UserID: userID}
 	if status, err := user.GetByUserID(); err != nil {
 		return services.ReturnError(err, status)
 	}

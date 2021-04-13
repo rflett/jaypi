@@ -533,8 +533,13 @@ functions:
       Type: integration
     events:
       - http:
-          path: group/{groupId}/members
+          path: group/{groupId}/members/{userId}
           method: delete
+          request:
+            parameters:
+              paths:
+                groupId: true
+                userId: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
