@@ -217,6 +217,29 @@ functions:
               paths:
                 provider: true
 
+  validateJwt:
+    handler: source/bin/validateJwt
+    name: validate-jwt-${self:provider.stage}
+    description: "Validates a JWT by being pre-authed and returning 204 if successful"
+    environment:
+      FUNCTION_NAME: validate-jwt
+    package:
+      include:
+        - ./source/bin/validateJwt
+    tags:
+      Environment: ${self:provider.stage}
+      Component: authentication
+      Type: integration
+    events:
+      - http:
+          path: account/validate-jwt
+          method: get
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   oauthCallback:
     handler: source/bin/oauthCallback
     name: oauth-callback-${self:provider.stage}
