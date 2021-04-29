@@ -182,7 +182,7 @@ func (u *User) Update() (status int, error error) {
 
 	// group ID may be nil
 	var gi *dynamodb.AttributeValue
-	if u.GroupIDs == nil {
+	if u.GroupIDs == nil || len(*u.GroupIDs) == 0 {
 		gi = &dynamodb.AttributeValue{
 			NULL: aws.Bool(true),
 		}
