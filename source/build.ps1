@@ -29,6 +29,7 @@ go build -ldflags="-s -w" -o bin/deleteVote rest/votes/deleteVote/main.go
 
 go build -ldflags="-s -w" -o bin/signup rest/account/signup/main.go
 go build -ldflags="-s -w" -o bin/signin rest/account/signin/main.go
+go build -ldflags="-s -w" -o bin/validateJwt rest/account/validateJwt/main.go
 go build -ldflags="-s -w" -o bin/oauthAuthenticate rest/oauth/authenticate/main.go
 go build -ldflags="-s -w" -o bin/oauthCallback rest/oauth/callback/main.go
 

@@ -46,6 +46,8 @@ go build -ldflags="-s -w" -o bin/signup rest/account/signup/main.go
 echo "Built signup"
 go build -ldflags="-s -w" -o bin/signin rest/account/signin/main.go
 echo "Built signin"
+go build -ldflags="-s -w" -o bin/validateJwt rest/account/validateJwt/main.go
+echo "Built validateJwt"
 go build -ldflags="-s -w" -o bin/oauthAuthenticate rest/oauth/authenticate/main.go
 echo "Built oauthAuthenticate"
 go build -ldflags="-s -w" -o bin/oauthCallback rest/oauth/callback/main.go
