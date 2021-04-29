@@ -27,7 +27,7 @@ type User struct {
 	Email          string    `json:"email"`
 	Points         int       `json:"points"`
 	CreatedAt      string    `json:"createdAt"`
-	GroupIDs       *[]string `json:"groups" dynamodbav:",stringset"`
+	GroupIDs       *[]string `json:"groups" dynamodbav:"groupIDs,stringset"`
 	NickName       *string   `json:"nickName"`
 	AuthProvider   *string   `json:"authProvider"`
 	AuthProviderId *string   `json:"authProviderId"`
