@@ -10,6 +10,7 @@ import (
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
+	"strings"
 )
 
 type requestBody struct {
@@ -26,10 +27,11 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
+	email := strings.ToLower(reqBody.Email)
 	loginUser := types.User{
-		Email:          reqBody.Email,
+		Email:          email,
 		AuthProvider:   aws.String(types.AuthProviderInternal),
-		AuthProviderId: &reqBody.Email,
+		AuthProviderId: &email,
 	}
 
 	// confirm user exists

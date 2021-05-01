@@ -46,8 +46,8 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 
 	// code doesn't exist
 	if len(result.Items) == 0 {
-		codeNotExistErr := errors.New("code does not exist")
-		logger.Log.Error().Err(codeNotExistErr).Str("code", code).Msg("code does not exist")
+		codeNotExistErr := errors.New("Group code not found.")
+		logger.Log.Error().Err(codeNotExistErr).Str("code", code).Msg(" groupcode does not exist")
 		return &types.Group{}, codeNotExistErr
 	}
 

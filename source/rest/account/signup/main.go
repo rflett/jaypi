@@ -10,6 +10,7 @@ import (
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
+	"strings"
 )
 
 // requestBody is the expected body of the request
@@ -31,7 +32,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	newUser := types.User{
 		Name:           reqBody.Name,
-		Email:          reqBody.Email,
+		Email:          strings.ToLower(reqBody.Email),
 		NickName:       &reqBody.NickName,
 		AuthProvider:   aws.String(types.AuthProviderInternal),
 		AuthProviderId: &reqBody.Email,
