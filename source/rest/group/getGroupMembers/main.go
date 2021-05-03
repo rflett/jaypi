@@ -10,6 +10,10 @@ import (
 	"strconv"
 )
 
+type responseBody struct {
+	Members []types.User `json:"members"`
+}
+
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	authContext := services.GetAuthorizerContext(request.RequestContext)
@@ -31,7 +35,10 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
-	return services.ReturnJSON(users, http.StatusOK)
+
+	// return the members
+	rb := responseBody{Members: users}
+	return services.ReturnJSON(rb, http.StatusOK)
 }
 
 func main() {
