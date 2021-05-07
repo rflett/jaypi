@@ -444,7 +444,8 @@ func (g *Group) GetGames() ([]Game, error) {
 		return []Game{}, err
 	}
 
-	var games []Game = nil
+	//goland:noinspection GoPreferNilSlice
+	games := []Game{}
 	for _, groupGame := range groupsGames.Items {
 		game := Game{}
 		if err = dynamodbattribute.UnmarshalMap(groupGame, &game); err != nil {

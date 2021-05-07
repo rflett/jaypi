@@ -9,6 +9,10 @@ import (
 	"net/http"
 )
 
+type responseBody struct {
+	Games []types.Game `json:"games"`
+}
+
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	authContext := services.GetAuthorizerContext(request.RequestContext)
@@ -27,7 +31,10 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
-	return services.ReturnJSON(games, http.StatusOK)
+
+	// return the members
+	rb := responseBody{Games: games}
+	return services.ReturnJSON(rb, http.StatusOK)
 }
 
 func main() {
