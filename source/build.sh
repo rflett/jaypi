@@ -18,6 +18,8 @@ go build -ldflags="-s -w" -o bin/createGroup rest/group/createGroup/main.go
 echo "Built createGroup"
 go build -ldflags="-s -w" -o bin/getGroup rest/group/getGroup/main.go
 echo "Built getGroup"
+go build -ldflags="-s -w" -o bin/deleteGroup rest/group/deleteGroup/main.go
+echo "Built deleteGroup"
 go build -ldflags="-s -w" -o bin/getGroupMembers rest/group/getGroupMembers/main.go
 echo "Built getGroupMembers"
 go build -ldflags="-s -w" -o bin/updateGroup rest/group/updateGroup/main.go

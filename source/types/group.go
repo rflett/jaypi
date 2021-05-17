@@ -215,6 +215,51 @@ func (g *Group) Get() (status int, error error) {
 	return http.StatusOK, nil
 }
 
+func (g *Group) Delete() (status int, error error) {
+	// delete the group owner membership
+	owner := User{UserID: g.OwnerID}
+	_, _ = owner.LeaveGroup(g.GroupID)
+
+	// inputs
+	deleteGroupCodeInput := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupCodeSortKey, g.Code)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+	deleteGroupInput := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+
+	// delete code from table
+	if _, err := clients.DynamoClient.DeleteItem(deleteGroupCodeInput); err != nil {
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group code item")
+		return http.StatusInternalServerError, err
+	}
+
+	// delete group from table
+	if _, err := clients.DynamoClient.DeleteItem(deleteGroupInput); err != nil {
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group item")
+		return http.StatusInternalServerError, err
+	}
+
+	logger.Log.Info().Str("groupID", g.GroupID).Msg("succesfully deleted group")
+	return http.StatusNoContent, nil
+}
+
 // AddUser a user to a group
 func (g *Group) AddUser(userID string) (status int, err error) {
 	member := groupMember{

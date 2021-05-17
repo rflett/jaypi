@@ -457,6 +457,33 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  deleteGroup:
+    handler: source/bin/deleteGroup
+    name: delete-group-${self:provider.stage}
+    description: "Delete a group"
+    environment:
+      FUNCTION_NAME: delete-group
+    package:
+      include:
+        - ./source/bin/deleteGroup
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: integration
+    events:
+      - http:
+          path: group/{groupId}
+          method: delete
+          request:
+            parameters:
+              paths:
+                groupId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   getGroupMembers:
     handler: source/bin/getGroupMembers
     name: get-group-members-${self:provider.stage}
