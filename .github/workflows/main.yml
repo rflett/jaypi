@@ -11,7 +11,7 @@ on:
 
 env:
   AWS_DEFAULT_REGION: ap-southeast-2
-  GOPATH: ${{ env.GITHUB_WORKSPACE }}/.go
+  GOPATH: ${{ github.workspace }}/.go
 
 jobs:
   godeps:
