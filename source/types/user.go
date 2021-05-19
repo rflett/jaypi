@@ -32,7 +32,7 @@ type User struct {
 	AuthProvider   *string  `json:"authProvider"`
 	AuthProviderId *string  `json:"authProviderId"`
 	AvatarUrl      *string  `json:"avatarUrl"`
-	Votes          *[]Song  `json:"votes" dynamodbav:",omitemptyelem"`
+	Votes          *[]Song  `json:"votes" dynamodbav:"votes,omitemptyelem"`
 	UpdatedAt      *string  `json:"updatedAt"`
 	Password       *string  `json:"-" dynamodbav:"password"`
 }
