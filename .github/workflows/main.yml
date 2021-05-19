@@ -98,14 +98,12 @@ jobs:
         run: go build -ldflags="-s -w" -o bin/${{ matrix.outFile}} ${{ matrix.sourcePath }}
 
       - run: ls -alh
-
-      - run: ls -alh
-        working-directory: source/
+        working-directory: source/bin
 
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.outFile }}
-          path: bin/${{ matrix.outFile }}
+          path: source/bin/${{ matrix.outFile }}
 
   deploy:
     name: Build and Deploy
@@ -127,8 +125,6 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           path: source/bin
-
-      - run: ls -alh
 
       - run: ls -alh
         working-directory: source/bin
