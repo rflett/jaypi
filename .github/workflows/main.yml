@@ -11,11 +11,35 @@ on:
 
 env:
   AWS_DEFAULT_REGION: ap-southeast-2
+  GOPATH: $GITHUB_WORKSPACE/.go
 
 jobs:
+  godeps:
+    name: Go Mod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: mkdir .go
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Go Dependencies
+        working-directory: source/
+        run: go mod download
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: godeps
+          path: .go/pkg/mod/
+
   build:
     name: Go Build
     runs-on: ubuntu-latest
+    needs: godeps
     strategy:
       matrix:
         include:
@@ -89,16 +113,14 @@ jobs:
         with:
           go-version: 1.15
 
-      - name: Go Dependencies
-        working-directory: source/
-        run: go mod download
+      - name: Download dependencies
+        uses: actions/download-artifact@v2
+        with:
+          name: godeps
 
       - name: Build
         working-directory: source/
         run: go build -ldflags="-s -w" -o bin/${{ matrix.outFile}} ${{ matrix.sourcePath }}
-
-      - run: ls -alh
-        working-directory: source/bin
 
       - uses: actions/upload-artifact@v2
         with:
@@ -106,7 +128,7 @@ jobs:
           path: source/bin/${{ matrix.outFile }}
 
   deploy:
-    name: Build and Deploy
+    name: Serverless Deploy
     runs-on: ubuntu-latest
     needs: build
     env:
@@ -125,9 +147,6 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           path: source/bin
-
-      - run: ls -alh
-        working-directory: source/bin
 
       - name: Set file permissions
         working-directory: source/bin
