@@ -374,24 +374,26 @@ func (u *User) GetGroups() ([]Group, error) {
 			},
 		},
 		IndexName:              aws.String(GSI),
+		ProjectionExpression:   aws.String("groupID"),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		TableName:              &clients.DynamoTable,
 	}
 
-	userVotes, err := clients.DynamoClient.Query(input)
+	groupMemberships, err := clients.DynamoClient.Query(input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting users groups")
 		return []Group{}, err
 	}
 
 	var groups []Group = nil
-	for _, group := range userVotes.Items {
-		membership := Group{}
-		if err = dynamodbattribute.UnmarshalMap(group, &membership); err != nil {
+	for _, membership := range groupMemberships.Items {
+		group := Group{}
+		if err = dynamodbattribute.UnmarshalMap(membership, &group); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal group to Group")
 			continue
 		}
-		groups = append(groups, membership)
+		_, _ = group.Get()
+		groups = append(groups, group)
 	}
 	return groups, nil
 }
