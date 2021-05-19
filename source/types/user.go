@@ -20,21 +20,21 @@ import (
 
 // User is a User of the application
 type User struct {
-	PK             string    `json:"-" dynamodbav:"PK"`
-	SK             string    `json:"-" dynamodbav:"SK"`
-	UserID         string    `json:"userID"`
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
-	Points         int       `json:"points"`
-	CreatedAt      string    `json:"createdAt"`
-	GroupIDs       *[]string `json:"groups" dynamodbav:"groupIDs,stringset"`
-	NickName       *string   `json:"nickName"`
-	AuthProvider   *string   `json:"authProvider"`
-	AuthProviderId *string   `json:"authProviderId"`
-	AvatarUrl      *string   `json:"avatarUrl"`
-	Votes          *[]Song   `json:"votes" dynamodbav:",omitemptyelem"`
-	UpdatedAt      *string   `json:"updatedAt"`
-	Password       *string   `json:"-" dynamodbav:"password"`
+	PK             string   `json:"-" dynamodbav:"PK"`
+	SK             string   `json:"-" dynamodbav:"SK"`
+	UserID         string   `json:"userID"`
+	Name           string   `json:"name"`
+	Email          string   `json:"email"`
+	Points         int      `json:"points"`
+	CreatedAt      string   `json:"createdAt"`
+	Groups         *[]Group `json:"groups" dynamodbav:"-"`
+	NickName       *string  `json:"nickName"`
+	AuthProvider   *string  `json:"authProvider"`
+	AuthProviderId *string  `json:"authProviderId"`
+	AvatarUrl      *string  `json:"avatarUrl"`
+	Votes          *[]Song  `json:"votes" dynamodbav:",omitemptyelem"`
+	UpdatedAt      *string  `json:"updatedAt"`
+	Password       *string  `json:"-" dynamodbav:"password"`
 }
 
 // UserClaims are the custom claims that embedded into the JWT token for authentication
@@ -180,24 +180,11 @@ func (u *User) Update() (status int, error error) {
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	u.UpdatedAt = &updatedAt
 
-	// group ID may be nil
-	var gi *dynamodb.AttributeValue
-	if u.GroupIDs == nil || len(*u.GroupIDs) == 0 {
-		gi = &dynamodb.AttributeValue{
-			NULL: aws.Bool(true),
-		}
-	} else {
-		gi = &dynamodb.AttributeValue{
-			SS: aws.StringSlice(*u.GroupIDs),
-		}
-	}
-
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#NN": aws.String("nickName"),
 			"#UA": aws.String("updatedAt"),
-			"#GI": aws.String("groupIDs"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":nn": {
@@ -206,7 +193,6 @@ func (u *User) Update() (status int, error error) {
 			":ua": {
 				S: u.UpdatedAt,
 			},
-			":gi": gi,
 		},
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
@@ -218,7 +204,7 @@ func (u *User) Update() (status int, error error) {
 		},
 		ReturnValues:     aws.String("NONE"),
 		TableName:        &clients.DynamoTable,
-		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua, #GI = :gi"),
+		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
 	_, err := clients.DynamoClient.UpdateItem(input)
@@ -373,6 +359,41 @@ func (u *User) GetVotes() ([]Song, error) {
 		votes = append(votes, song)
 	}
 	return votes, nil
+}
+
+// GetGroups returns the groups a user is a member of
+func (u *User) GetGroups() ([]Group, error) {
+	// get the users in the group
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", GroupPrimaryKey)),
+			},
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+			},
+		},
+		IndexName:              aws.String(GSI),
+		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		TableName:              &clients.DynamoTable,
+	}
+
+	userVotes, err := clients.DynamoClient.Query(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting users groups")
+		return []Group{}, err
+	}
+
+	var groups []Group = nil
+	for _, group := range userVotes.Items {
+		membership := Group{}
+		if err = dynamodbattribute.UnmarshalMap(group, &membership); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal group to Group")
+			continue
+		}
+		groups = append(groups, membership)
+	}
+	return groups, nil
 }
 
 // GetByUserID the user from the table
@@ -605,10 +626,10 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, groupID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, groupID)),
+				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
 			},
 		},
 		TableName: &clients.DynamoTable,
@@ -621,16 +642,6 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", groupID).Str("userID", u.UserID).Msg("Error removing user from group")
 		return http.StatusInternalServerError, err
-	}
-
-	// remove groupID from the user's groups
-	if err = removeFromSlice(u.GroupIDs, &groupID); err != nil {
-		return http.StatusNotFound, err
-	}
-
-	// update user
-	if status, err = u.Update(); err != nil {
-		return status, err
 	}
 
 	logger.Log.Info().Str("userID", u.UserID).Str("groupID", groupID).Msg("User left group")
@@ -708,27 +719,4 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	}
 
 	return &endpoints, nil
-}
-
-// removeFromSlice removes the el from the slice
-func removeFromSlice(slice *[]string, el *string) error {
-	// find the position of the el in the slice
-	var position int
-	for i, val := range *slice {
-		if val == *el {
-			position = i
-			break
-		}
-	}
-	if &position == nil {
-		return errors.New("couldn't find el in slice")
-	}
-
-	// copy last element to index i.
-	(*slice)[position] = (*slice)[len(*slice)-1]
-	// erase last element (write zero value).
-	(*slice)[len(*slice)-1] = ""
-	// truncate slice
-	*slice = (*slice)[:len(*slice)-1]
-	return nil
 }

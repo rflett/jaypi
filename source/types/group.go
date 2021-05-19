@@ -247,7 +247,6 @@ func (g *Group) Delete() (status int, error error) {
 	// delete code from table
 	if _, err := clients.DynamoClient.DeleteItem(deleteGroupCodeInput); err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group code item")
-		return http.StatusInternalServerError, err
 	}
 
 	// delete group from table
@@ -262,32 +261,32 @@ func (g *Group) Delete() (status int, error error) {
 
 // AddUser a user to a group
 func (g *Group) AddUser(userID string) (status int, err error) {
+	user := User{UserID: userID}
 	member := groupMember{
-		PK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
-		SK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
+		PK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
+		SK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
 		GroupID: g.GroupID,
 		UserID:  userID,
 	}
 
-	// get the user
-	user := User{UserID: userID}
-	if status, err = user.GetByUserID(); err != nil {
-		return status, err
+	// get the users groups
+	var groups []Group
+	groups, err = user.GetGroups()
+	if err != nil {
+		return http.StatusInternalServerError, err
 	}
 
-	if user.GroupIDs != nil {
-		// check if user has reached the group limit
-		if len(*user.GroupIDs) == GroupMembershipLimit {
-			return http.StatusBadRequest, errors.New(fmt.Sprintf(
-				"Group limit reached - you can only be a member of up to %d groups.", GroupMembershipLimit),
-			)
-		}
+	// check membership limit
+	if len(groups) == GroupMembershipLimit {
+		return http.StatusBadRequest, errors.New(fmt.Sprintf(
+			"Group limit reached - you can only be a member of up to %d groups.", GroupMembershipLimit),
+		)
+	}
 
-		// check if user is already in the group
-		for _, groupId := range *user.GroupIDs {
-			if groupId == g.GroupID {
-				return http.StatusConflict, errors.New("User is already a member of this group")
-			}
+	// check if they are already in the group
+	for _, group := range groups {
+		if group.GroupID == g.GroupID {
+			return http.StatusConflict, errors.New("User is already a member of this group")
 		}
 	}
 
@@ -302,16 +301,6 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("userID", userID).Msg("Error adding user to group")
 		return http.StatusInternalServerError, err
-	}
-
-	// update member with new group id
-	if user.GroupIDs == nil {
-		user.GroupIDs = &[]string{g.GroupID}
-	} else {
-		*user.GroupIDs = append(*user.GroupIDs, g.GroupID)
-	}
-	if status, err = user.Update(); err != nil {
-		return status, err
 	}
 
 	// return the group
@@ -429,7 +418,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
 			},
 			":pk": {
-				S: aws.String("USER#"),
+				S: aws.String(fmt.Sprintf("%s#", UserPrimaryKey)),
 			},
 		},
 		IndexName:              aws.String(GSI),

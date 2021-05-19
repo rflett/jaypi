@@ -141,10 +141,10 @@ func UserIsInGroup(userID string, groupID string) (bool, error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
+				S: aws.String(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
 			},
 			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
+				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
 			},
 		},
 		KeyConditionExpression: aws.String("PK = :pk and SK = :sk"),
@@ -160,6 +160,37 @@ func UserIsInGroup(userID string, groupID string) (bool, error) {
 	}
 
 	return len(result.Items) != 0, nil
+}
+
+// UsersAreInSameGroup returns whether two users are in the same group
+func UsersAreInSameGroup(userIdA string, userIdB string) (bool, error) {
+	userA := types.User{UserID: userIdA}
+	userB := types.User{UserID: userIdB}
+
+	userAGroups, err := userA.GetGroups()
+	if err != nil {
+		return false, err
+	}
+
+	userBGroups, err := userB.GetGroups()
+	if err != nil {
+		return false, err
+	}
+
+	inSameGroup := false
+	for _, groupA := range userAGroups {
+		for _, groupB := range userBGroups {
+			if groupA.GroupID == groupB.GroupID {
+				inSameGroup = true
+				break
+			}
+		}
+		if inSameGroup {
+			break
+		}
+	}
+
+	return inSameGroup, nil
 }
 
 // UserIsGroupOwner returns whether the user is the group owner

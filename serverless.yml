@@ -345,6 +345,7 @@ functions:
             parameters:
               querystrings:
                 withVotes: true
+                withGroups: true
               paths:
                 userId: true
           authorizer:
