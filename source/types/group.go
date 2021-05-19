@@ -421,7 +421,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 				S: aws.String(fmt.Sprintf("%s#", UserPrimaryKey)),
 			},
 		},
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
 		ProjectionExpression:   aws.String("userID"),
 		TableName:              &clients.DynamoTable,
 	}
