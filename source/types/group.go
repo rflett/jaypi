@@ -414,14 +414,13 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	// get the users in the group
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
+			":pk": {
 				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
 			},
-			":pk": {
+			":sk": {
 				S: aws.String(fmt.Sprintf("%s#", UserPrimaryKey)),
 			},
 		},
-		IndexName:              aws.String(GSI),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("userID"),
 		TableName:              &clients.DynamoTable,
