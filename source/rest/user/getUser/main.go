@@ -49,7 +49,6 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get their groups if required
 	if withGroups {
-		// get the members votes
 		groups, err := user.GetGroups()
 		if err == nil {
 			user.Groups = &groups

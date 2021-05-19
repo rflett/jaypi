@@ -61,6 +61,12 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(err, http.StatusInternalServerError)
 	}
 
+	// get their groups
+	groups, err := loginUser.GetGroups()
+	if err == nil {
+		loginUser.Groups = &groups
+	}
+
 	// response
 	loginResponse := types.LoginResponse{
 		User:      loginUser,
