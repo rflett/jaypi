@@ -158,6 +158,70 @@ func (g *Group) Update() (status int, error error) {
 	return http.StatusNoContent, nil
 }
 
+// NominateOwner sets a new owner of the group
+func (g *Group) NominateOwner(userID string) (status int, error error) {
+	// set fields
+	updatedAt := time.Now().UTC().Format(time.RFC3339)
+	g.UpdatedAt = &updatedAt
+
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#UA": aws.String("updatedAt"),
+			"#O":  aws.String("ownerID"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":ua": {
+				S: g.UpdatedAt,
+			},
+			":o": {
+				S: &userID,
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("SET #O = :o, #UA = :ua"),
+	}
+
+	_, err := clients.DynamoClient.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeConditionalCheckFailedException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Msg("error updating group owner")
+			return responseStatus, aerr
+		} else {
+			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group owner")
+			return http.StatusInternalServerError, err
+		}
+	}
+
+	return http.StatusNoContent, nil
+}
+
 // Get the group from the table
 func (g *Group) Get() (status int, error error) {
 	// get query

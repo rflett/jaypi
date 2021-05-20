@@ -404,6 +404,32 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  updateGroupOwner:
+    handler: source/bin/updateGroupOwner
+    name: update-group-owner-${self:provider.stage}
+    description: "Update a group with a new owner"
+    environment:
+      FUNCTION_NAME: update-group-owner
+    package:
+      include:
+        - ./source/bin/updateGroupOwner
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: integration
+    events:
+      - http:
+          path: group/nominate
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/group/nominate.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   # GROUPS
   createGroup:
     handler: source/bin/createGroup

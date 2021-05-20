@@ -24,6 +24,8 @@ go build -ldflags="-s -w" -o bin/getGroupMembers rest/group/getGroupMembers/main
 echo "Built getGroupMembers"
 go build -ldflags="-s -w" -o bin/updateGroup rest/group/updateGroup/main.go
 echo "Built updateGroup"
+go build -ldflags="-s -w" -o bin/updateGroupOwner rest/user/updateGroupOwner/main.go
+echo "Built updateGroupOwner"
 go build -ldflags="-s -w" -o bin/joinGroup rest/group/joinGroup/main.go
 echo "Built joinGroup"
 go build -ldflags="-s -w" -o bin/leaveGroup rest/group/leaveGroup/main.go
