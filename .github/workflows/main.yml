@@ -11,98 +11,11 @@ on:
 
 env:
   AWS_DEFAULT_REGION: ap-southeast-2
-  GOPATH: ${{ github.workspace }}/.go
 
 jobs:
-  godeps:
-    name: Go Mod
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: mkdir .go
-
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.15
-
-      - name: Go Dependencies
-        working-directory: source/
-        run: go mod download
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: godeps
-          path: .go/pkg/mod/
-
   build:
-    name: Go Build
+    name: Build and Deploy
     runs-on: ubuntu-latest
-    needs: godeps
-    strategy:
-      matrix:
-        include:
-          - outFile: signup
-            sourcePath: rest/account/signup/main.go
-          - outFile: signin
-            sourcePath: rest/account/signin/main.go
-          - outFile: validateJwt
-            sourcePath: rest/account/validateJwt/main.go
-          - outFile: oauthAuthenticate
-            sourcePath: rest/oauth/authenticate/main.go
-          - outFile: oauthCallback
-            sourcePath: rest/oauth/callback/main.go
-          - outFile: registerDevice
-            sourcePath: rest/device/registerDevice/main.go
-          - outFile: deregisterDevice
-            sourcePath: rest/device/deregisterDevice/main.go
-          - outFile: getUser
-            sourcePath: rest/user/getUser/main.go
-          - outFile: updateUser
-            sourcePath: rest/user/updateUser/main.go
-          - outFile: getAvatarURL
-            sourcePath: rest/user/getAvatarURL/main.go
-          - outFile: createGroup
-            sourcePath: rest/group/createGroup/main.go
-          - outFile: getGroup
-            sourcePath: rest/group/getGroup/main.go
-          - outFile: deleteGroup
-            sourcePath: rest/group/deleteGroup/main.go
-          - outFile: getGroupMembers
-            sourcePath: rest/group/getGroupMembers/main.go
-          - outFile: updateGroup
-            sourcePath: rest/group/updateGroup/main.go
-          - outFile: joinGroup
-            sourcePath: rest/group/joinGroup/main.go
-          - outFile: leaveGroup
-            sourcePath: rest/group/leaveGroup/main.go
-          - outFile: getGroupQR
-            sourcePath: rest/group/getGroupQR/main.go
-          - outFile: createGame
-            sourcePath: rest/group/createGame/main.go
-          - outFile: deleteGame
-            sourcePath: rest/group/deleteGame/main.go
-          - outFile: updateGame
-            sourcePath: rest/group/updateGame/main.go
-          - outFile: getGames
-            sourcePath: rest/group/getGames/main.go
-          - outFile: songSearch
-            sourcePath: rest/song/songSearch/main.go
-          - outFile: createVote
-            sourcePath: rest/votes/createVote/main.go
-          - outFile: deleteVote
-            sourcePath: rest/votes/deleteVote/main.go
-          - outFile: chuneMachine
-            sourcePath: lambda/chune-machine/main.go
-          - outFile: beanCounter
-            sourcePath: lambda/bean-counter/main.go
-          - outFile: scoreTaker
-            sourcePath: lambda/score-taker/main.go
-          - outFile: authorizer
-            sourcePath: lambda/authorizer/main.go
-          - outFile: townCrier
-            sourcePath: lambda/town-crier/main.go
     env:
       GOOS: linux
     steps:
@@ -112,29 +25,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.15
-
-      - name: Download dependencies
-        uses: actions/download-artifact@v2
-        with:
-          name: godeps
-
-      - name: Build
-        working-directory: source/
-        run: go build -ldflags="-s -w" -o bin/${{ matrix.outFile}} ${{ matrix.sourcePath }}
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.outFile }}
-          path: source/bin/${{ matrix.outFile }}
-
-  deploy:
-    name: Serverless Deploy
-    runs-on: ubuntu-latest
-    needs: build
-    env:
-      GOOS: linux
-    steps:
-      - uses: actions/checkout@v2
 
       - name: Setup Node
         uses: actions/setup-node@v1
@@ -144,9 +34,49 @@ jobs:
       - name: NPM Dependencies
         run: npm install -g serverless serverless-dotenv-plugin
 
-      - uses: actions/download-artifact@v2
-        with:
-          path: source/bin
+      - name: Go Dependencies
+        working-directory: source/
+        run: go mod download
+
+      - name: Build
+        working-directory: source/
+        run: |
+          go build -ldflags="-s -w" -o bin/signup             rest/account/signup/main.go
+          go build -ldflags="-s -w" -o bin/signin             rest/account/signin/main.go
+          go build -ldflags="-s -w" -o bin/validateJwt        rest/account/validateJwt/main.go
+          go build -ldflags="-s -w" -o bin/oauthAuthenticate  rest/oauth/authenticate/main.go
+          go build -ldflags="-s -w" -o bin/oauthCallback      rest/oauth/callback/main.go
+
+          go build -ldflags="-s -w" -o bin/registerDevice     rest/device/registerDevice/main.go
+          go build -ldflags="-s -w" -o bin/deregisterDevice   rest/device/deregisterDevice/main.go
+
+          go build -ldflags="-s -w" -o bin/getUser            rest/user/getUser/main.go
+          go build -ldflags="-s -w" -o bin/updateUser         rest/user/updateUser/main.go
+          go build -ldflags="-s -w" -o bin/getAvatarURL       rest/user/getAvatarURL/main.go
+
+          go build -ldflags="-s -w" -o bin/createGroup        rest/group/createGroup/main.go
+          go build -ldflags="-s -w" -o bin/getGroup           rest/group/getGroup/main.go
+          go build -ldflags="-s -w" -o bin/deleteGroup        rest/group/deleteGroup/main.go
+          go build -ldflags="-s -w" -o bin/getGroupMembers    rest/group/getGroupMembers/main.go
+          go build -ldflags="-s -w" -o bin/updateGroup        rest/group/updateGroup/main.go
+          go build -ldflags="-s -w" -o bin/joinGroup          rest/group/joinGroup/main.go
+          go build -ldflags="-s -w" -o bin/leaveGroup         rest/group/leaveGroup/main.go
+          go build -ldflags="-s -w" -o bin/getGroupQR         rest/group/getGroupQR/main.go
+          go build -ldflags="-s -w" -o bin/createGame         rest/group/createGame/main.go
+          go build -ldflags="-s -w" -o bin/deleteGame         rest/group/deleteGame/main.go
+          go build -ldflags="-s -w" -o bin/updateGame         rest/group/updateGame/main.go
+          go build -ldflags="-s -w" -o bin/getGames           rest/group/getGames/main.go
+
+          go build -ldflags="-s -w" -o bin/songSearch         rest/song/songSearch/main.go
+
+          go build -ldflags="-s -w" -o bin/createVote         rest/votes/createVote/main.go
+          go build -ldflags="-s -w" -o bin/deleteVote         rest/votes/deleteVote/main.go
+
+          go build -ldflags="-s -w" -o bin/chuneMachine       lambda/chune-machine/main.go
+          go build -ldflags="-s -w" -o bin/beanCounter        lambda/bean-counter/main.go
+          go build -ldflags="-s -w" -o bin/scoreTaker         lambda/score-taker/main.go
+          go build -ldflags="-s -w" -o bin/authorizer         lambda/authorizer/main.go
+          go build -ldflags="-s -w" -o bin/townCrier          lambda/town-crier/main.go
 
       - name: Set file permissions
         working-directory: source/bin
