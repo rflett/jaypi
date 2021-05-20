@@ -48,7 +48,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	if status, err = group.NominateOwner(reqBody.UserID); err != nil {
 		return services.ReturnError(err, status)
 	}
-	return services.ReturnJSON(group, http.StatusCreated)
+	return services.ReturnNoContent()
 }
 
 func main() {
