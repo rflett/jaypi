@@ -124,7 +124,7 @@ func (g *Game) Update() (status int, error error) {
 	return http.StatusNoContent, nil
 }
 
-// RemoveVote removes a song as a users vote
+// Delete removes the game from the database
 func (g *Game) Delete() (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{

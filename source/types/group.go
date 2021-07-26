@@ -158,6 +158,70 @@ func (g *Group) Update() (status int, error error) {
 	return http.StatusNoContent, nil
 }
 
+// NominateOwner sets a new owner of the group
+func (g *Group) NominateOwner(userID string) (status int, error error) {
+	// set fields
+	updatedAt := time.Now().UTC().Format(time.RFC3339)
+	g.UpdatedAt = &updatedAt
+
+	// update query
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#UA": aws.String("updatedAt"),
+			"#O":  aws.String("ownerID"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":ua": {
+				S: g.UpdatedAt,
+			},
+			":o": {
+				S: &userID,
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("SET #O = :o, #UA = :ua"),
+	}
+
+	_, err := clients.DynamoClient.UpdateItem(input)
+
+	// handle errors
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			var responseStatus int
+			switch aerr.Code() {
+			case dynamodb.ErrCodeProvisionedThroughputExceededException:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeResourceNotFoundException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeConditionalCheckFailedException:
+				responseStatus = http.StatusNotFound
+			case dynamodb.ErrCodeRequestLimitExceeded:
+				responseStatus = http.StatusTooManyRequests
+			case dynamodb.ErrCodeInternalServerError:
+				responseStatus = http.StatusInternalServerError
+			default:
+				responseStatus = http.StatusInternalServerError
+			}
+			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Msg("error updating group owner")
+			return responseStatus, aerr
+		} else {
+			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group owner")
+			return http.StatusInternalServerError, err
+		}
+	}
+
+	return http.StatusNoContent, nil
+}
+
 // Get the group from the table
 func (g *Group) Get() (status int, error error) {
 	// get query
@@ -215,34 +279,78 @@ func (g *Group) Get() (status int, error error) {
 	return http.StatusOK, nil
 }
 
+func (g *Group) Delete() (status int, error error) {
+	// delete the group owner membership
+	owner := User{UserID: g.OwnerID}
+	_, _ = owner.LeaveGroup(g.GroupID)
+
+	// inputs
+	deleteGroupCodeInput := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupCodeSortKey, g.Code)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+	deleteGroupInput := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+
+	// delete code from table
+	if _, err := clients.DynamoClient.DeleteItem(deleteGroupCodeInput); err != nil {
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group code item")
+	}
+
+	// delete group from table
+	if _, err := clients.DynamoClient.DeleteItem(deleteGroupInput); err != nil {
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group item")
+		return http.StatusInternalServerError, err
+	}
+
+	logger.Log.Info().Str("groupID", g.GroupID).Msg("succesfully deleted group")
+	return http.StatusNoContent, nil
+}
+
 // AddUser a user to a group
 func (g *Group) AddUser(userID string) (status int, err error) {
+	user := User{UserID: userID}
 	member := groupMember{
-		PK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
-		SK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
+		PK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
+		SK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
 		GroupID: g.GroupID,
 		UserID:  userID,
 	}
 
-	// get the user
-	user := User{UserID: userID}
-	if status, err = user.GetByUserID(); err != nil {
-		return status, err
+	// get the users groups
+	var groups []Group
+	groups, err = user.GetGroups()
+	if err != nil {
+		return http.StatusInternalServerError, err
 	}
 
-	if user.GroupIDs != nil {
-		// check if user has reached the group limit
-		if len(*user.GroupIDs) == GroupMembershipLimit {
-			return http.StatusBadRequest, errors.New(fmt.Sprintf(
-				"Group limit reached - you can only be a member of up to %d groups.", GroupMembershipLimit),
-			)
-		}
+	// check membership limit
+	if len(groups) == GroupMembershipLimit {
+		return http.StatusBadRequest, errors.New(fmt.Sprintf(
+			"Group limit reached - you can only be a member of up to %d groups.", GroupMembershipLimit),
+		)
+	}
 
-		// check if user is already in the group
-		for _, groupId := range *user.GroupIDs {
-			if groupId == g.GroupID {
-				return http.StatusConflict, errors.New("User is already a member of this group")
-			}
+	// check if they are already in the group
+	for _, group := range groups {
+		if group.GroupID == g.GroupID {
+			return http.StatusConflict, errors.New("User is already a member of this group")
 		}
 	}
 
@@ -257,16 +365,6 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("userID", userID).Msg("Error adding user to group")
 		return http.StatusInternalServerError, err
-	}
-
-	// update member with new group id
-	if user.GroupIDs == nil {
-		user.GroupIDs = &[]string{g.GroupID}
-	} else {
-		*user.GroupIDs = append(*user.GroupIDs, g.GroupID)
-	}
-	if status, err = user.Update(); err != nil {
-		return status, err
 	}
 
 	// return the group
@@ -380,15 +478,14 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	// get the users in the group
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
+			":pk": {
 				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
 			},
-			":pk": {
-				S: aws.String("USER#"),
+			":sk": {
+				S: aws.String(fmt.Sprintf("%s#", UserPrimaryKey)),
 			},
 		},
-		IndexName:              aws.String(GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
+		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
 		ProjectionExpression:   aws.String("userID"),
 		TableName:              &clients.DynamoTable,
 	}

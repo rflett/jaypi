@@ -17,8 +17,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// get userId from pathParameters
 	userID := request.PathParameters["userId"]
 
-	// whether to get the members votes as well
+	// whether to get the users votes/groups as well
 	withVotes, _ := strconv.ParseBool(request.QueryStringParameters["withVotes"])
+	withGroups, _ := strconv.ParseBool(request.QueryStringParameters["withGroups"])
 
 	// get user
 	user := types.User{UserID: userID}
@@ -28,15 +29,11 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// users can get themselves without doing the group check
 	if authContext.UserID != userID {
-		// check auth user is in the same group as the user they're getting
-		isInGroup := false
-		for _, groupID := range *user.GroupIDs {
-			if ok, _ := services.UserIsInGroup(authContext.UserID, groupID); ok {
-				isInGroup = true
-				break
-			}
+		inSameGroup, err := services.UsersAreInSameGroup(authContext.UserID, userID)
+		if err != nil {
+			return services.ReturnError(err, http.StatusBadRequest)
 		}
-		if !isInGroup {
+		if !inSameGroup {
 			return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
 		}
 	}
@@ -47,6 +44,14 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		votes, voteErr := user.GetVotes()
 		if voteErr == nil {
 			user.Votes = &votes
+		}
+	}
+
+	// get their groups if required
+	if withGroups {
+		groups, err := user.GetGroups()
+		if err == nil {
+			user.Groups = &groups
 		}
 	}
 

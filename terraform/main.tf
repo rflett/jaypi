@@ -231,6 +231,7 @@ resource "aws_s3_bucket_policy" "assets" {
       Action   = "s3:GetObject",
       Effect   = "Allow",
       Resource = "${aws_s3_bucket.assets.arn}/*",
+
       Principal = {
         AWS = aws_cloudfront_origin_access_identity.main.iam_arn
       }

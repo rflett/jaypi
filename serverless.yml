@@ -345,6 +345,7 @@ functions:
             parameters:
               querystrings:
                 withVotes: true
+                withGroups: true
               paths:
                 userId: true
           authorizer:
@@ -403,6 +404,32 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  updateGroupOwner:
+    handler: source/bin/updateGroupOwner
+    name: update-group-owner-${self:provider.stage}
+    description: "Update a group with a new owner"
+    environment:
+      FUNCTION_NAME: update-group-owner
+    package:
+      include:
+        - ./source/bin/updateGroupOwner
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: integration
+    events:
+      - http:
+          path: group/nominate
+          method: post
+          request:
+            schema:
+              application/json: ${file(schemas/group/nominate.json)}
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   # GROUPS
   createGroup:
     handler: source/bin/createGroup
@@ -447,6 +474,33 @@ functions:
       - http:
           path: group/{groupId}
           method: get
+          request:
+            parameters:
+              paths:
+                groupId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  deleteGroup:
+    handler: source/bin/deleteGroup
+    name: delete-group-${self:provider.stage}
+    description: "Delete a group"
+    environment:
+      FUNCTION_NAME: delete-group
+    package:
+      include:
+        - ./source/bin/deleteGroup
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: integration
+    events:
+      - http:
+          path: group/{groupId}
+          method: delete
           request:
             parameters:
               paths:

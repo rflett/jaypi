@@ -17,32 +17,19 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	groupID := request.PathParameters["groupId"]
 	userID := request.PathParameters["userId"]
 
-	// the user needs to be the group owner
+	// if you're removing someone else you need to be the group owner
 	if authContext.UserID != userID {
 		if ok, _ := services.UserIsGroupOwner(authContext.UserID, groupID); !ok {
 			return services.ReturnError(errors.New("You have to be the group owner to do this"), http.StatusForbidden)
 		}
-	}
-
-	// check requesting user is in the group
-	if ok, _ := services.UserIsInGroup(authContext.UserID, groupID); !ok {
-		return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
-	}
-
-	// check user to remove is in the group
-	if ok, _ := services.UserIsInGroup(userID, groupID); !ok {
-		return services.ReturnError(errors.New("Cannot remove non-member from group"), http.StatusForbidden)
+	} else {
+		if ok, _ := services.UserIsInGroup(userID, groupID); !ok {
+			return services.ReturnError(errors.New("You have to a member of the group to do this"), http.StatusForbidden)
+		}
 	}
 
 	// get the user
 	user := types.User{UserID: userID}
-	if status, err := user.GetByUserID(); err != nil {
-		return services.ReturnError(err, status)
-	}
-
-	if user.GroupIDs == nil {
-		return services.ReturnError(errors.New("You're not a member of any groups"), http.StatusBadRequest)
-	}
 
 	// leave their current group
 	if status, err := user.LeaveGroup(groupID); err != nil {
