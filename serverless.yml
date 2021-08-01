@@ -841,7 +841,7 @@ functions:
       Type: integration
     events:
       - http:
-          path: song/played
+          path: songs/played
           method: get
           authorizer:
             name: authorizer
