@@ -17,6 +17,38 @@ import (
 	"net/http"
 )
 
+// GetRecentlyPlayed returns the songs that have been played
+func GetRecentlyPlayed() ([]types.Song, error) {
+	// input
+	input := &dynamodb.ScanInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", types.SongPrimaryKey)),
+			},
+		},
+		FilterExpression: aws.String("begins_with(PK, :pk)"),
+		TableName:        &clients.DynamoTable,
+		Limit:            aws.Int64(10),
+	}
+
+	recentSongs, err := clients.DynamoClient.Scan(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error getting recent songs")
+		return []types.Song{}, err
+	}
+
+	var songs []types.Song = nil
+	for _, recentSong := range recentSongs.Items {
+		song := types.Song{}
+		if err = dynamodbattribute.UnmarshalMap(recentSong, &song); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal recentSong to song")
+			continue
+		}
+		songs = append(songs, song)
+	}
+	return songs, nil
+}
+
 // GetGroupFromCode returns the groupID based on the group code
 func GetGroupFromCode(code string) (*types.Group, error) {
 	// input

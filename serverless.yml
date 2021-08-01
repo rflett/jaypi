@@ -796,7 +796,7 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
-  # SEARCH
+  # SONGS
   songSearch:
     handler: source/bin/songSearch
     name: song-search-${self:provider.stage}
@@ -820,6 +820,29 @@ functions:
             parameters:
               querystrings:
                 query: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
+  getPlayedSongs:
+    handler: source/bin/getPlayedSongs
+    name: get-played-songs-${self:provider.stage}
+    description: "Get the songs that have played"
+    environment:
+      FUNCTION_NAME: get-played-songs
+    package:
+      include:
+        - ./source/bin/getPlayedSongs
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: integration
+    events:
+      - http:
+          path: song/played
+          method: get
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
