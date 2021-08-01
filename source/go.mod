@@ -3,6 +3,7 @@ module jjj.rflett.com/jjj-api
 go 1.14
 
 require (
+	github.com/aws/aws-sdk-go v1.38.40
 	github.com/aws/aws-lambda-go v1.25.0
 	github.com/aws/aws-sdk-go v1.38.40
 	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
