@@ -15,6 +15,7 @@ import (
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
+	"sort"
 )
 
 // GetRecentlyPlayed returns the songs that have been played
@@ -28,15 +29,17 @@ func GetRecentlyPlayed() ([]types.Song, error) {
 		},
 		FilterExpression: aws.String("begins_with(PK, :pk)"),
 		TableName:        &clients.DynamoTable,
-		Limit:            aws.Int64(10),
+		Limit:            aws.Int64(100),
 	}
 
+	// get songs from db
 	recentSongs, err := clients.DynamoClient.Scan(input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("error getting recent songs")
 		return []types.Song{}, err
 	}
 
+	// unmarshal songs into slice
 	var songs []types.Song = nil
 	for _, recentSong := range recentSongs.Items {
 		song := types.Song{}
@@ -46,6 +49,13 @@ func GetRecentlyPlayed() ([]types.Song, error) {
 		}
 		songs = append(songs, song)
 	}
+
+	// sort the songs by PlayedPosition asc
+	sort.Slice(songs, func(i, j int) bool {
+		return *songs[i].PlayedPosition < *songs[j].PlayedPosition
+	})
+
+	// return
 	return songs, nil
 }
 
