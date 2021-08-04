@@ -3,7 +3,7 @@
   "title": "JayPI",
   "type": "object",
   "properties": {
-    "position": {
+    "rank": {
       "type": "integer"
     },
     "song": {
@@ -27,5 +27,5 @@
       }
     }
   },
-  "required": ["position", "song"]
+  "required": ["rank", "song"]
 }

@@ -57,11 +57,11 @@ type userAuthProvider struct {
 
 // songVote is a votes in a users top 10
 type songVote struct {
-	PK       string `json:"-" dynamodbav:"PK"`
-	SK       string `json:"-" dynamodbav:"SK"`
-	SongID   string `json:"songID"`
-	UserID   string `json:"userID"`
-	Position int    `json:"position"`
+	PK     string `json:"-" dynamodbav:"PK"`
+	SK     string `json:"-" dynamodbav:"SK"`
+	SongID string `json:"songID"`
+	UserID string `json:"userID"`
+	Rank   int    `json:"rank"`
 }
 
 // voteCount returns the number of votes a user already has
@@ -239,7 +239,7 @@ func (u *User) Update() (status int, error error) {
 }
 
 // AddVote adds a song as a votes for the user
-func (u *User) AddVote(s *Song, position int) (status int, error error) {
+func (u *User) AddVote(s *Song, rank int) (status int, error error) {
 	// check if song exists and add it if it doesn't
 	exists, existsErr := s.Exists()
 	if existsErr != nil {
@@ -266,11 +266,11 @@ func (u *User) AddVote(s *Song, position int) (status int, error error) {
 
 	// set fields
 	sv := songVote{
-		PK:       fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID),
-		SK:       fmt.Sprintf("%s#%s", "SONG", s.SongID),
-		SongID:   s.SongID,
-		UserID:   u.UserID,
-		Position: position,
+		PK:     fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID),
+		SK:     fmt.Sprintf("%s#%s", "SONG", s.SongID),
+		SongID: s.SongID,
+		UserID: u.UserID,
+		Rank:   rank,
 	}
 
 	// create item

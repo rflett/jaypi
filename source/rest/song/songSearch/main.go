@@ -24,6 +24,10 @@ var (
 	client = spotify.Client{}
 )
 
+type responseBody struct {
+	Songs []types.Song `json:"songs"`
+}
+
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var songs []types.Song = nil
@@ -66,7 +70,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		songs = append(songs, *song)
 	}
 
-	return services.ReturnJSON(songs, http.StatusOK)
+	// return the songs
+	rb := responseBody{Songs: songs}
+	return services.ReturnJSON(rb, http.StatusOK)
 }
 
 func init() {

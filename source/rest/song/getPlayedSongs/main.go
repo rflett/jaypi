@@ -8,7 +8,6 @@ import (
 	"net/http"
 )
 
-
 type responseBody struct {
 	Songs []types.Song `json:"songs"`
 }
