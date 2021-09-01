@@ -239,7 +239,7 @@ func (u *User) Update() (status int, error error) {
 }
 
 // AddVote adds a song as a votes for the user
-func (u *User) AddVote(s *Song, rank int) (status int, error error) {
+func (u *User) AddVote(s *Song) (status int, error error) {
 	// check if song exists and add it if it doesn't
 	exists, existsErr := s.Exists()
 	if existsErr != nil {
@@ -267,10 +267,10 @@ func (u *User) AddVote(s *Song, rank int) (status int, error error) {
 	// set fields
 	sv := songVote{
 		PK:     fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID),
-		SK:     fmt.Sprintf("%s#%s", "SONG", s.SongID),
+		SK:     fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID),
 		SongID: s.SongID,
 		UserID: u.UserID,
-		Rank:   rank,
+		Rank:   *s.Rank,
 	}
 
 	// create item

@@ -70,6 +70,8 @@ func (s *Song) Create() error {
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 	s.CreatedAt = &createdAt
 
+	// TODO go to Spotify and get the song info?
+
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(s)
 

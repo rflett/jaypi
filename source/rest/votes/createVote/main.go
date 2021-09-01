@@ -12,8 +12,8 @@ import (
 
 // requestBody is the expected body of the request
 type requestBody struct {
-	Song types.Song `json:"song"`
-	Rank int        `json:"rank"`
+	Upsert []types.Song `json:"upsert"`
+	Delete []string     `json:"delete"`
 }
 
 // Handler is our handle on life
@@ -21,7 +21,9 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	var err error
 	var status int
 
+	// get the user
 	authContext := services.GetAuthorizerContext(request.RequestContext)
+	user := types.User{UserID: authContext.UserID}
 
 	// unmarshall request body to requestBody struct
 	reqBody := requestBody{}
@@ -30,11 +32,22 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
-	// add the vote to the user
-	user := types.User{UserID: authContext.UserID}
-	if status, err = user.AddVote(&reqBody.Song, reqBody.Rank); err != nil {
-		return services.ReturnError(err, status)
+	// delete votes first
+	for _, toDelete := range reqBody.Delete {
+		status, err = user.RemoveVote(&toDelete)
+		if err != nil {
+			return services.ReturnError(err, status)
+		}
 	}
+
+	// add other votes
+	for _, toUpsert := range reqBody.Upsert {
+		status, err = user.AddVote(&toUpsert)
+		if err != nil {
+			return services.ReturnError(err, status)
+		}
+	}
+
 	return services.ReturnNoContent()
 }
 
