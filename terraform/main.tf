@@ -28,8 +28,8 @@ resource "aws_dynamodb_table" "jaypi" {
   billing_mode   = "PROVISIONED"
   hash_key       = "PK"
   range_key      = "SK"
-  read_capacity  = 1
-  write_capacity = 1
+  read_capacity  = 5
+  write_capacity = 5
 
   attribute {
     name = "PK"
@@ -46,8 +46,8 @@ resource "aws_dynamodb_table" "jaypi" {
     hash_key        = "SK"
     range_key       = "PK"
     projection_type = "ALL"
-    write_capacity  = 1
-    read_capacity   = 1
+    write_capacity  = 5
+    read_capacity   = 5
   }
 
   tags = {
