@@ -853,6 +853,7 @@ functions:
     handler: source/bin/purgeSongs
     name: purge-songs-${self:provider.stage}
     description: "Purge all of the songs that have played"
+    timeout: 300
     environment:
       FUNCTION_NAME: purge-songs
     package:
