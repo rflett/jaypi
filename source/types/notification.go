@@ -4,15 +4,12 @@ import (
 	"encoding/json"
 )
 
-var APNSKey = "APNS"
-
 type Notification struct {
 	Title      string `json:"title"`
 	Message    string `json:"message"`
 	CustomData string `json:"customData"` // TODO this would be our notification data
 }
 
-// TODO this looks horrendous
 func (n *Notification) AndroidPayload() string {
 	// Slightly less horrendous?
 	var messagePayload = map[string]map[string]map[string]interface{}{
@@ -27,7 +24,6 @@ func (n *Notification) AndroidPayload() string {
 	return string(marshalledMessage)
 }
 
-// TODO this looks horrendous
 func (n *Notification) IosPayload() string {
 	// Slightly less horrendous? (Still pretty bad)
 	messagePayload := map[string]map[string]interface{}{
