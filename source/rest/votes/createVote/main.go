@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
@@ -30,6 +32,13 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	err = json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)
+	}
+
+	// validate
+	if len(reqBody.Upsert) > types.VoteLimit {
+		return services.ReturnError(
+			errors.New(fmt.Sprintf("A maximum of %d votes is allowed.", types.VoteLimit)), http.StatusBadRequest,
+		)
 	}
 
 	// delete votes first
