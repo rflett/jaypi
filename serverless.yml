@@ -848,3 +848,26 @@ functions:
             resultTtlInSeconds: 0
             identitySource: method.request.header.Authorization
             type: token
+
+  purgeSongs:
+    handler: source/bin/purgeSongs
+    name: purge-songs-${self:provider.stage}
+    description: "Purge all of the songs that have played"
+    environment:
+      FUNCTION_NAME: purge-songs
+    package:
+      include:
+        - ./source/bin/purgeSongs
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: admin
+    events:
+      - http:
+          path: songs/purge
+          method: delete
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token

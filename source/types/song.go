@@ -36,6 +36,32 @@ func (s *Song) SearchString() string {
 	return reg.ReplaceAllString(fmt.Sprintf("%s %s", s.Name, s.Artist), "")
 }
 
+// Delete the song
+func (s *Song) Delete() error {
+	// input
+	input := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
+			},
+			"SK": {
+				S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
+			},
+		},
+		TableName: &clients.DynamoTable,
+	}
+
+	// delete from table
+	_, err := clients.DynamoClient.DeleteItem(input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("error deleting song")
+	}
+
+	return err
+}
+
 // Create the song
 func (s *Song) Create() error {
 	// set fields

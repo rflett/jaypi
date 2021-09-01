@@ -44,6 +44,8 @@ go build -ldflags="-s -w" -o bin/songSearch rest/song/songSearch/main.go
 echo "Built songSearch"
 go build -ldflags="-s -w" -o bin/getPlayedSongs rest/song/getPlayedSongs/main.go
 echo "Built getPlayedSongs"
+go build -ldflags="-s -w" -o bin/purgeSongs rest/song/purgeSongs/main.go
+echo "Built purgeSongs"
 go build -ldflags="-s -w" -o bin/createVote rest/votes/createVote/main.go
 echo "Built createVote"
 go build -ldflags="-s -w" -o bin/deleteVote rest/votes/deleteVote/main.go

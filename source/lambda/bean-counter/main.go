@@ -97,7 +97,7 @@ func getVoters(songID string) (voters []string, err error) {
 		IndexName:              aws.String(types.GSI),
 		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
 		ProjectionExpression:   aws.String("#U"),
-		Limit:                  aws.Int64(1),
+		Limit:                  aws.Int64(1), // TODO I think this was set to 1 for testing the pagination
 	}
 
 	queryErr := clients.DynamoClient.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {

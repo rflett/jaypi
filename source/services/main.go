@@ -271,3 +271,36 @@ func ReturnError(err error, status int) (events.APIGatewayProxyResponse, error) 
 	}
 	return ReturnJSON(body, status)
 }
+
+// PurgeSongs removes all songs from the table
+func PurgeSongs() error {
+	// input
+	input := &dynamodb.ScanInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(fmt.Sprintf("%s#", types.SongPrimaryKey)),
+			},
+		},
+		FilterExpression: aws.String("begins_with(PK, :pk)"),
+		TableName:        &clients.DynamoTable,
+	}
+
+	scanErr := clients.DynamoClient.ScanPages(input, func(page *dynamodb.ScanOutput, lastPage bool) bool {
+		for _, item := range page.Items {
+			song := types.Song{}
+			unMarshErr := dynamodbattribute.UnmarshalMap(item, &song)
+			if unMarshErr != nil {
+				logger.Log.Error().Err(unMarshErr).Msg("error unmarshalling item to song")
+			} else {
+				_ = song.Delete()
+			}
+		}
+		return !lastPage
+	})
+
+	if scanErr != nil {
+		logger.Log.Error().Err(scanErr).Msg("error scanning songs for purging")
+	}
+
+	return scanErr
+}

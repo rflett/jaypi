@@ -55,10 +55,3 @@ type LoginResponse struct {
 	Token     string `json:"token"`
 	TokenType string `json:"tokenType"`
 }
-
-type AuthorizerContext struct {
-	AuthProvider   string
-	AuthProviderId string
-	Name           string
-	UserID         string
-}
