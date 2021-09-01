@@ -354,6 +354,33 @@ functions:
             identitySource: method.request.header.Authorization
             type: token
 
+  getUsersVotes:
+    handler: source/bin/getUsersVotes
+    name: get-users-votes-${self:provider.stage}
+    description: "Get a user's votes"
+    environment:
+      FUNCTION_NAME: get-users-votes
+    package:
+      include:
+        - ./source/bin/getUsersVotes
+    tags:
+      Environment: ${self:provider.stage}
+      Component: api
+      Type: integration
+    events:
+      - http:
+          path: user/{userId}/votes
+          method: get
+          request:
+            parameters:
+              paths:
+                userId: true
+          authorizer:
+            name: authorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+
   updateUser:
     handler: source/bin/updateUser
     name: update-user-${self:provider.stage}

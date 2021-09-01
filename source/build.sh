@@ -6,6 +6,8 @@ gofmt -s -w .
 
 go build -ldflags="-s -w" -o bin/getUser rest/user/getUser/main.go
 echo "Built getUser"
+go build -ldflags="-s -w" -o bin/getUsersVotes rest/user/getUsersVotes/main.go
+echo "Built getUsersVotes"
 go build -ldflags="-s -w" -o bin/updateUser rest/user/updateUser/main.go
 echo "Built updateUser"
 go build -ldflags="-s -w" -o bin/getAvatarURL rest/user/getAvatarURL/main.go
