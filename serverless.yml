@@ -3,6 +3,7 @@ frameworkVersion: '>=2.25.2 < 3.0.0'
 useDotenv: true
 plugins:
   - serverless-dotenv-plugin
+  - serverless-plugin-tracing
 
 provider:
   name: aws
@@ -10,6 +11,7 @@ provider:
   region: ap-southeast-2
   stage: ${opt:stage, 'staging'}
   lambdaHashingVersion: 20201221
+  tracing: true
   memorySize: 128
   timeout: 10
   deploymentBucket:

@@ -93,7 +93,7 @@ resource "aws_iam_role_policy" "jaypi" {
           "sqs:ReceiveMessage",
           "sqs:GetQueueAttributes",
           "secretsmanager:GetSecretValue",
-          "s3:PutObject"
+          "s3:PutObject",
         ],
         Resource = [
           aws_sqs_queue.chune_refresh.arn,
@@ -106,7 +106,7 @@ resource "aws_iam_role_policy" "jaypi" {
           "${aws_s3_bucket.assets.arn}/*",
           data.aws_secretsmanager_secret.jwt_signing_key.arn,
           "arn:aws:sns:ap-southeast-2:${data.aws_caller_identity.current.account_id}:endpoint/*",
-          "arn:aws:sns:ap-southeast-2:${data.aws_caller_identity.current.account_id}:app/*"
+          "arn:aws:sns:ap-southeast-2:${data.aws_caller_identity.current.account_id}:app/*",
         ]
       },
       {
@@ -119,7 +119,9 @@ resource "aws_iam_role_policy" "jaypi" {
           "sns:CreatePlatformEndpoint",
           "sns:DeleteEndpoint",
           "sns:ListPlatformApplications",
-          "sns:ListEndpointsByPlatformApplication"
+          "sns:ListEndpointsByPlatformApplication",
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords",
         ],
         Resource = [
           "*"

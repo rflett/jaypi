@@ -32,7 +32,11 @@ jobs:
           node-version: 12.x
 
       - name: NPM Dependencies
-        run: npm install -g serverless serverless-dotenv-plugin
+        run: |
+          npm install -g \
+            serverless \
+            serverless-dotenv-plugin \
+            serverless-plugin-tracing
 
       - name: Go Dependencies
         working-directory: source/
