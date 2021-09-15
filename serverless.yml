@@ -789,9 +789,6 @@ functions:
       - http:
           path: user/vote
           method: post
-          request:
-            schema:
-              application/json: ${file(schemas/votes/create.json)}
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
