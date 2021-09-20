@@ -304,3 +304,32 @@ func PurgeSongs() error {
 
 	return scanErr
 }
+
+// SetPlayCount sets the current playCount to a specific value
+func SetPlayCount(val string) {
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#V": aws.String("value"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":val": {
+				N: &val,
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String(types.PlayCountPrimaryKey),
+			},
+			"SK": {
+				S: aws.String(types.PlayCountSortKey),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		TableName:        &clients.DynamoTable,
+		UpdateExpression: aws.String("SET #V = :val"),
+	}
+	_, err := clients.DynamoClient.UpdateItem(input)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to set the play count")
+	}
+}

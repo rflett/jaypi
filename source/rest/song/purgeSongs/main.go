@@ -19,6 +19,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(err, http.StatusInternalServerError)
 	}
 
+	services.SetPlayCount("1")
+
 	return services.ReturnNoContent()
 }
 

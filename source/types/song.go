@@ -64,13 +64,11 @@ func (s *Song) Delete() error {
 
 // Create the song
 func (s *Song) Create() error {
-	// set fields
+	// set fields, everything else should come from the front-end (artwork etc.)
 	s.PK = fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)
 	s.SK = fmt.Sprintf("%s#%s", SongSortKey, s.SongID)
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 	s.CreatedAt = &createdAt
-
-	// TODO go to Spotify and get the song info?
 
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(s)
@@ -230,7 +228,7 @@ func (s *Song) Get() error {
 	return nil
 }
 
-// getCurrentPlayCount looks up the current playCount item and returns its value
+// getCurrentPlayCount looks up the current playCount item and returns its value. It should start at 1.
 func getCurrentPlayCount() (*string, error) {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeNames: map[string]*string{
