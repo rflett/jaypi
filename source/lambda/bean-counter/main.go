@@ -15,9 +15,7 @@ import (
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
-	"math/rand"
 	"os"
-	"time"
 )
 
 const MessageBatch = 10
@@ -68,15 +66,6 @@ func queueForScorer(points *int, userIDs []string) error {
 		}
 	}
 	return nil
-}
-
-// calculatePoints determines what score to give users for their song
-func calculatePoints(songPosition *int) *int {
-	// TODO this is just a random points but we need to decide what to do here
-	var points int
-	rand.Seed(time.Now().UTC().UnixNano())
-	points = *songPosition + rand.Intn(100)
-	return &points
 }
 
 // getVoters returns the IDs of users who voted for a particular song
@@ -144,7 +133,7 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 		logger.Log.Error().Err(playPosMissingErr).Str("songID", mb.SongID).Msg("Song hasn't been played yet")
 		return playPosMissingErr
 	}
-	points := calculatePoints(s.PlayedPosition)
+	points := s.PlayedPosition
 
 	// find the voters of this song
 	voters, getVotersErr := getVoters(s.SongID)
