@@ -273,8 +273,6 @@ func (u *User) AddVote(s *Song) (status int, error error) {
 		Rank:   *s.Rank,
 	}
 
-	logger.Log.Info().Msg(fmt.Sprintf("%v", sv))
-
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(sv)
 	input := &dynamodb.PutItemInput{
@@ -326,7 +324,7 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 
 // GetVotes returns a users votes
 func (u *User) GetVotes() ([]Song, error) {
-	// get the users in the group
+	// get the users votes
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {

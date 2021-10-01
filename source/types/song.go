@@ -23,7 +23,7 @@ type Song struct {
 	Album          string             `json:"album"`
 	Artist         string             `json:"artist"`
 	Artwork        *[]jjj.ArtworkSize `json:"artwork"`
-	Rank           *int               `json:"rank" dynamodbav:"rank"`
+	Rank           *int               `json:"rank" dynamodbav:"-"`
 	PlayedPosition *int               `json:"playedPosition"`
 	PlayedAt       *string            `json:"playedAt"`
 	CreatedAt      *string            `json:"createdAt"`
