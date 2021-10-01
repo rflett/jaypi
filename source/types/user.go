@@ -335,7 +335,7 @@ func (u *User) GetVotes() ([]Song, error) {
 			},
 		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("songID"),
+		ProjectionExpression:   aws.String("songID, rank"),
 		TableName:              &clients.DynamoTable,
 	}
 
