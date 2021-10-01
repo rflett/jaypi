@@ -273,6 +273,8 @@ func (u *User) AddVote(s *Song) (status int, error error) {
 		Rank:   *s.Rank,
 	}
 
+	logger.Log.Info().Msg(fmt.Sprintf("%v", sv))
+
 	// create item
 	av, _ := dynamodbattribute.MarshalMap(sv)
 	input := &dynamodb.PutItemInput{
