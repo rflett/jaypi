@@ -334,8 +334,12 @@ func (u *User) GetVotes() ([]Song, error) {
 				S: aws.String(fmt.Sprintf("%s#", SongPrimaryKey)),
 			},
 		},
+		ExpressionAttributeNames: map[string]*string{
+			"#R": aws.String("rank"),
+			"#S": aws.String("songID"),
+		},
 		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("songID, rank"),
+		ProjectionExpression:   aws.String("#S, #R"),
 		TableName:              &clients.DynamoTable,
 	}
 
