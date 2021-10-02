@@ -220,9 +220,6 @@ func (s *Song) Get() error {
 		return errors.New("unable to find song in table")
 	}
 
-	// remove the rank from the struct
-	delete(result.Item, "rank")
-
 	// unmarshal item into struct
 	err = dynamodbattribute.UnmarshalMap(result.Item, &s)
 	if err != nil {
