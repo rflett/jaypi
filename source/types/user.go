@@ -356,10 +356,13 @@ func (u *User) GetVotes() ([]Song, error) {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to songVote")
 			continue
 		}
+		logger.Log.Info().Msg(fmt.Sprintf("Vote is %v", vote))
+		logger.Log.Info().Msg(fmt.Sprintf("Song is %v", song))
 		if err = song.Get(); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to get song")
 			continue
 		}
+		logger.Log.Info().Msg(fmt.Sprintf("Song is %v", song))
 		votes = append(votes, song)
 	}
 	return votes, nil
