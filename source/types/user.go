@@ -352,18 +352,21 @@ func (u *User) GetVotes() ([]Song, error) {
 	var votes []Song = nil
 	for _, vote := range userVotes.Items {
 		song := Song{}
+		var voteRank int
 		if err = dynamodbattribute.UnmarshalMap(vote, &song); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to songVote")
 			continue
 		}
-		rank := song.Rank
-		logger.Log.Info().Msg(fmt.Sprintf("Saved rank as %d", *rank))
+		voteRank = *song.Rank
+		logger.Log.Info().Msg(fmt.Sprintf("Saved rank as %d", voteRank))
+
+		// fill out the rest of the song attributes
 		if err = song.Get(); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to get song")
 			continue
 		}
-		song.Rank = rank
-		logger.Log.Info().Msg(fmt.Sprintf("Saved song as %v", song))
+		song.Rank = &voteRank
+		logger.Log.Info().Msg(fmt.Sprintf("Returning song rank as %d", *song.Rank))
 		votes = append(votes, song)
 	}
 	return votes, nil
