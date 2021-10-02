@@ -358,7 +358,6 @@ func (u *User) GetVotes() ([]Song, error) {
 			continue
 		}
 		voteRank = *song.Rank
-		logger.Log.Info().Msg(fmt.Sprintf("Saved rank as %d", voteRank))
 
 		// fill out the rest of the song attributes
 		if err = song.Get(); err != nil {
@@ -366,7 +365,6 @@ func (u *User) GetVotes() ([]Song, error) {
 			continue
 		}
 		song.Rank = &voteRank
-		logger.Log.Info().Msg(fmt.Sprintf("Returning song rank as %d", *song.Rank))
 		votes = append(votes, song)
 	}
 	return votes, nil
