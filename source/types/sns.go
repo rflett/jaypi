@@ -66,7 +66,7 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 
 	// create platform endpoint in table
 	pe := PlatformEndpoint{
-		PK:       fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
+		PK:       fmt.Sprintf("%s#%s", UserPartitionKey, userID),
 		SK:       fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, *endpoint.EndpointArn),
 		UserID:   userID,
 		Arn:      *endpoint.EndpointArn,
@@ -100,7 +100,7 @@ func (p *PlatformEndpoint) Delete() error {
 	// delete platform endpoint from table
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]dbTypes.AttributeValue{
-			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", UserPrimaryKey, p.UserID)},
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", UserPartitionKey, p.UserID)},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, p.Arn)},
 		},
 		TableName: &clients.DynamoTable,

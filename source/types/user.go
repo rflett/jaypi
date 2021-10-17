@@ -41,7 +41,7 @@ type User struct {
 
 // return the partition key value for a user
 func (u *User) PKVal() string {
-	return fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)
+	return fmt.Sprintf("%s#%s", UserPartitionKey, u.UserID)
 }
 
 // return the sort key value for a user
@@ -52,7 +52,7 @@ func (u *User) SKVal() string {
 // voteCount returns the number of votes a user already has
 func (u *User) voteCount() (count int, error error) {
 	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(u.PKVal()))
-	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPrimaryKey))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
 	projExpr := expression.NamesList(expression.Name("songID"))
@@ -259,7 +259,7 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 				Value: u.PKVal(),
 			},
 			SortKey: &dbTypes.AttributeValueMemberS{
-				Value: fmt.Sprintf("%s#%s", SongPrimaryKey, *songID),
+				Value: fmt.Sprintf("%s#%s", SongPartitionKey, *songID),
 			},
 		},
 		TableName: &clients.DynamoTable,
@@ -282,7 +282,7 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 func (u *User) GetVotes() ([]Song, error) {
 	// get the users votes
 	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(u.PKVal()))
-	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPrimaryKey))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
 	projExpr := expression.NamesList(expression.Name("rank"), expression.Name("songID"))
@@ -333,7 +333,7 @@ func (u *User) GetVotes() ([]Song, error) {
 // GetGroups returns the groups a user is a member of
 func (u *User) GetGroups() ([]Group, error) {
 	// get the users in the group
-	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupPrimaryKey))
+	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupPartitionKey))
 	skCondition := expression.Key(SortKey).Equal(expression.Value(u.PKVal()))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
@@ -409,7 +409,7 @@ func (u *User) GetByUserID() (status int, error error) {
 // GetByUserID the user from the table by their oauth id
 func (u *User) GetByAuthProviderId() (status int, error error) {
 	// input
-	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey))
+	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", UserAuthProviderPartitionKey))
 	skCondition := expression.Key(SortKey).Equal(
 		expression.Value(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
 	)
@@ -467,7 +467,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 		skCondition = expression.Key(SortKey).Equal(expression.Value(u.SKVal()))
 	case "AuthProviderId":
 		idx = aws.String(GSI)
-		pkCondition = expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey))
+		pkCondition = expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", UserAuthProviderPartitionKey))
 		skCondition = expression.Key(SortKey).Equal(
 			expression.Value(
 				fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId),
@@ -518,7 +518,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 // NewAuthProvider creates a new mapping of a user to their auth provider
 func (u *User) NewAuthProvider() error {
 	uap := userAuthProvider{
-		PK:             fmt.Sprintf("%s#%s", UserAuthProviderPrimaryKey, u.UserID),
+		PK:             fmt.Sprintf("%s#%s", UserAuthProviderPartitionKey, u.UserID),
 		SK:             fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId),
 		UserID:         u.UserID,
 		AuthProviderId: *u.AuthProviderId,
@@ -574,7 +574,7 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]dbTypes.AttributeValue{
-			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", GroupPrimaryKey, groupID)},
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", GroupPartitionKey, groupID)},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
 		},
 		TableName: &clients.DynamoTable,

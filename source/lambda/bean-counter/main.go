@@ -71,8 +71,8 @@ func queueForScorer(points *int, userIDs []string) error {
 
 // getVoters returns the IDs of users who voted for a particular song
 func getVoters(songID string) (voters []string, err error) {
-	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.UserPrimaryKey))
-	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.SongPrimaryKey, songID)))
+	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.UserPartitionKey))
+	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.SongPartitionKey, songID)))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
 	projExpr := expression.NamesList(expression.Name("userID"))

@@ -24,7 +24,7 @@ import (
 // GetRecentlyPlayed returns the songs that have been played
 func GetRecentlyPlayed() ([]types.Song, error) {
 	// input
-	condition := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPrimaryKey))
+	condition := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
 	expr, err := expression.NewBuilder().WithCondition(condition).Build()
 
 	if err != nil {
@@ -68,7 +68,7 @@ func GetRecentlyPlayed() ([]types.Song, error) {
 // GetGroupFromCode returns the groupID based on the group code
 func GetGroupFromCode(code string) (*types.Group, error) {
 	// input
-	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.GroupCodePrimaryKey))
+	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.GroupCodePartitionKey))
 	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.GroupCodeSortKey, code)))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
@@ -193,10 +193,10 @@ func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
 func UserIsInGroup(userID string, groupID string) (bool, error) {
 	// input
 	pkCondition := expression.Key(types.PartitionKey).Equal(
-		expression.Value(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
+		expression.Value(fmt.Sprintf("%s#%s", types.GroupPartitionKey, groupID)),
 	)
 	skCondition := expression.Key(types.SortKey).Equal(
-		expression.Value(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
+		expression.Value(fmt.Sprintf("%s#%s", types.UserPartitionKey, userID)),
 	)
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
@@ -299,7 +299,7 @@ func PurgeSongs() {
 	// input
 	input := &dynamodb.ScanInput{
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
-			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPrimaryKey)},
+			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPartitionKey)},
 		},
 		FilterExpression: aws.String("begins_with(PK, :pk)"),
 		TableName:        &clients.DynamoTable,
@@ -336,7 +336,7 @@ func SetPlayCount(val string) {
 			":val": &dbTypes.AttributeValueMemberS{Value: val},
 		},
 		Key: map[string]dbTypes.AttributeValue{
-			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: types.PlayCountPrimaryKey},
+			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: types.PlayCountPartitionKey},
 			types.SortKey:      &dbTypes.AttributeValueMemberS{Value: types.PlayCountSortKey},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,

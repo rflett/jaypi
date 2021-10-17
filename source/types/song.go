@@ -33,7 +33,7 @@ type Song struct {
 
 // return the partition key value for a song
 func (s *Song) PKVal() string {
-	return fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)
+	return fmt.Sprintf("%s#%s", SongPartitionKey, s.SongID)
 }
 
 // return the sort key value for a song
@@ -219,7 +219,7 @@ func (s *Song) Get() error {
 
 // getCurrentPlayCount looks up the current playCount item and returns its value. It should start at 1.
 func getCurrentPlayCount() (*string, error) {
-	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(PlayCountPrimaryKey))
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(PlayCountPartitionKey))
 	skCondition := expression.Key(SortKey).Equal(expression.Value(PlayCountSortKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
@@ -263,7 +263,7 @@ func incrementPlayCount() {
 			":inc": &dbTypes.AttributeValueMemberN{Value: "1"},
 		},
 		Key: map[string]dbTypes.AttributeValue{
-			PartitionKey: &dbTypes.AttributeValueMemberS{Value: PlayCountPrimaryKey},
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: PlayCountPartitionKey},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: PlayCountSortKey},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,

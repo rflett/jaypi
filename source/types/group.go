@@ -48,7 +48,7 @@ type groupMember struct {
 }
 
 func (g *Group) PKVal() string {
-	return fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)
+	return fmt.Sprintf("%s#%s", GroupPartitionKey, g.GroupID)
 }
 
 func (g *Group) SKVal() string {
@@ -250,7 +250,7 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 	user := User{UserID: userID}
 	member := groupMember{
 		PK:      g.PKVal(),
-		SK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
+		SK:      fmt.Sprintf("%s#%s", UserPartitionKey, userID),
 		GroupID: g.GroupID,
 		UserID:  userID,
 	}
@@ -404,7 +404,7 @@ func (g *Group) NewCode() error {
 func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	// get the users in the group
 	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(g.PKVal()))
-	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", UserPrimaryKey))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", UserPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
 	projExpr := expression.NamesList(expression.Name("userID"))
@@ -494,7 +494,7 @@ func (g *Group) GetGames() ([]Game, error) {
 // ValidateCode checks if a code already exists against a group and returns an error if it does
 func validateGroupCode(code string) error {
 	// input
-	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupCodePrimaryKey))
+	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupCodePartitionKey))
 	skCondition := expression.Key(SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", GroupCodeSortKey, code)))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
