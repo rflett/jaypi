@@ -53,8 +53,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 func GetVotes(u string) ([]types.Song, error) {
 	// get the users votes
-	pkCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("%s#%s", types.UserPartitionKey, u)))
-	skCondition := expression.Key("SK").BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
+	pkCondition := expression.Key(types.PartitionKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.UserPartitionKey, u)))
+	skCondition := expression.Key(types.SortKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
 	projExpr := expression.NamesList(expression.Name("rank"), expression.Name("songID"))
