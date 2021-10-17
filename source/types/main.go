@@ -1,6 +1,12 @@
 package types
 
+import (
+	"github.com/dgrijalva/jwt-go"
+)
+
 const (
+	PartitionKey               = "PK"
+	SortKey                    = "SK"
 	GroupPrimaryKey            = "GROUP"
 	GroupSortKey               = "#PROFILE"
 	SongPrimaryKey             = "SONG"
@@ -55,4 +61,31 @@ type LoginResponse struct {
 	User      User   `json:"user"`
 	Token     string `json:"token"`
 	TokenType string `json:"tokenType"`
+}
+
+// UserClaims are the custom claims that embedded into the JWT token for authentication
+type UserClaims struct {
+	Name           string  `json:"name"`
+	Picture        *string `json:"picture"`
+	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
+	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
+	jwt.StandardClaims
+}
+
+// userAuthProvider represents a user and their AuthProviderId
+type userAuthProvider struct {
+	PK             string `json:"-" dynamodbav:"PK"`
+	SK             string `json:"-" dynamodbav:"SK"`
+	UserID         string `json:"userID"`
+	AuthProviderId string `json:"authProviderId"`
+	AuthProvider   string `json:"authProvider"`
+}
+
+// songVote is a votes in a users top 10
+type songVote struct {
+	PK     string `json:"-" dynamodbav:"PK"`
+	SK     string `json:"-" dynamodbav:"SK"`
+	SongID string `json:"songID"`
+	UserID string `json:"userID"`
+	Rank   int    `json:"rank"`
 }

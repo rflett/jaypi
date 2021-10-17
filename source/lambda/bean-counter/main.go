@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/dchest/uniuri"
 	"jjj.rflett.com/jjj-api/clients"
@@ -70,41 +71,49 @@ func queueForScorer(points *int, userIDs []string) error {
 
 // getVoters returns the IDs of users who voted for a particular song
 func getVoters(songID string) (voters []string, err error) {
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#U": aws.String("userID"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.SongPrimaryKey, songID)),
-			},
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", types.UserPrimaryKey)),
-			},
-		},
-		TableName:              &clients.DynamoTable,
-		IndexName:              aws.String(types.GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		ProjectionExpression:   aws.String("#U"),
+	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.UserPrimaryKey))
+	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.SongPrimaryKey, songID)))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("userID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for getVoters func")
 	}
 
-	queryErr := clients.DynamoClient.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
-		for _, item := range page.Items {
-			voter := types.User{}
-			unMarshErr := dynamodbattribute.UnmarshalMap(item, &voter)
-			if unMarshErr != nil {
-				logger.Log.Error().Err(unMarshErr).Msg("error unmarshalling item to user")
-			}
+	// input
+	input := &dynamodb.QueryInput{
+		TableName:                 &clients.DynamoTable,
+		IndexName:                 aws.String(types.GSI),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
+	}
+
+	paginator := dynamodb.NewQueryPaginator(clients.DynamoClient, input)
+
+	for paginator.HasMorePages() {
+		page, pageErr := paginator.NextPage(context.TODO())
+		if pageErr != nil {
+			logger.Log.Error().Err(pageErr).Msg("error getting NextPage from getVoters paginator")
+			break
+		}
+
+		var theseVoters []types.User
+		marshalErr := attributevalue.UnmarshalListOfMaps(page.Items, &theseVoters)
+		if marshalErr != nil {
+			logger.Log.Error().Err(marshalErr).Msg("error unmarshalling voters to slice of users")
+			break
+		}
+
+		for _, voter := range theseVoters {
 			if voter.UserID != "" {
 				voters = append(voters, voter.UserID)
 			}
 		}
-		return !lastPage
-	})
-
-	if queryErr != nil {
-		logger.Log.Error().Err(queryErr).Str("songID", songID).Msg("error getting voters for song")
-		return []string{}, queryErr
 	}
 
 	return voters, nil

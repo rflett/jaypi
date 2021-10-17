@@ -1,11 +1,13 @@
 package types
 
 import (
+	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/google/uuid"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -25,26 +27,34 @@ type Game struct {
 	UpdatedAt   *string `json:"updatedAt"`
 }
 
+func (g *Game) PKVal() string {
+	return fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)
+}
+
+func (g *Game) SKVal() string {
+	return fmt.Sprintf("%s#%s", GameSortKey, g.GameID)
+}
+
 // Create the game and save it to the database
 func (g *Game) Create() (status int, error error) {
 	// set fields
 	g.GameID = uuid.NewString()
-	g.PK = fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)
-	g.SK = fmt.Sprintf("%s#%s", GameSortKey, g.GameID)
+	g.PK = g.PKVal()
+	g.SK = g.SKVal()
 	g.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	// create item
-	av, _ := dynamodbattribute.MarshalMap(g)
+	av, _ := attributevalue.MarshalMap(g)
 
 	// create input
 	input := &dynamodb.PutItemInput{
 		TableName:    &clients.DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
 
 	// add to table
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -64,61 +74,31 @@ func (g *Game) Update() (status int, error error) {
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#N":  aws.String("name"),
-			"#D":  aws.String("description"),
-			"#UA": aws.String("updatedAt"),
+		ExpressionAttributeNames: map[string]string{
+			"#N":  "name",
+			"#D":  "description",
+			"#UA": "updatedAt",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":ua": {
-				S: g.UpdatedAt,
-			},
-			":n": {
-				S: &g.Name,
-			},
-			":d": {
-				S: &g.Description,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":ua": &dbTypes.AttributeValueMemberS{Value: *g.UpdatedAt},
+			":n":  &dbTypes.AttributeValueMemberS{Value: g.Name},
+			":d":  &dbTypes.AttributeValueMemberS{Value: g.Description},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GameSortKey, g.GameID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		ReturnValues:     aws.String("NONE"),
+		ReturnValues:     dbTypes.ReturnValueNone,
 		TableName:        &clients.DynamoTable,
 		UpdateExpression: aws.String("SET #N = :n, #UA = :ua, #D = :d"),
 	}
 
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeConditionalCheckFailedException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
-			}
-			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("error updating game")
-			return responseStatus, aerr
-		} else {
-			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("error updating game")
-			return http.StatusInternalServerError, err
-		}
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("error updating game")
+		return http.StatusInternalServerError, err
 	}
 
 	return http.StatusNoContent, nil
@@ -128,19 +108,15 @@ func (g *Game) Update() (status int, error error) {
 func (g *Game) Delete() (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GameSortKey, g.GameID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
 		TableName: &clients.DynamoTable,
 	}
 
 	// delete from table
-	_, err := clients.DynamoClient.DeleteItem(input)
+	_, err := clients.DynamoClient.DeleteItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -155,36 +131,32 @@ func (g *Game) Delete() (status int, error error) {
 // Exists checks to see if the Game exists in the table already
 func (g *Game) Exists() (bool, error) {
 	// input
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(g.PKVal()))
+	skCondition := expression.Key(SortKey).Equal(expression.Value(g.SKVal()))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("gameID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for voteCount func")
+	}
+
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", GameSortKey, g.GameID)),
-			},
-		},
-		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
-		ProjectionExpression:   aws.String("songID"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &clients.DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case dynamodb.ErrCodeResourceNotFoundException:
-				return false, nil
-			}
-			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Error checking if game exists in table")
-			return false, err
-		} else {
-			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Error checking if game exists in table")
-			return false, err
-		}
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("gameID", g.GameID).Msg("Error checking if game exists in table")
+		return false, err
 	}
 
 	// game doesn't exist

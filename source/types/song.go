@@ -1,12 +1,14 @@
 package types
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types/jjj"
@@ -29,6 +31,16 @@ type Song struct {
 	CreatedAt      *string            `json:"createdAt"`
 }
 
+// return the partition key value for a song
+func (s *Song) PKVal() string {
+	return fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)
+}
+
+// return the sort key value for a song
+func (s *Song) SKVal() string {
+	return fmt.Sprintf("%s#%s", SongSortKey, s.SongID)
+}
+
 // SearchString should be used in spotify requests to search for the song
 func (s *Song) SearchString() string {
 	// only allow letters, numbers and spaces in search string
@@ -40,19 +52,15 @@ func (s *Song) SearchString() string {
 func (s *Song) Delete() error {
 	// input
 	input := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 		},
 		TableName: &clients.DynamoTable,
 	}
 
 	// delete from table
-	_, err := clients.DynamoClient.DeleteItem(input)
+	_, err := clients.DynamoClient.DeleteItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -65,23 +73,23 @@ func (s *Song) Delete() error {
 // Create the song
 func (s *Song) Create() error {
 	// set fields, everything else should come from the front-end (artwork etc.)
-	s.PK = fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)
-	s.SK = fmt.Sprintf("%s#%s", SongSortKey, s.SongID)
+	s.PK = s.PKVal()
+	s.SK = s.SKVal()
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 	s.CreatedAt = &createdAt
 
 	// create item
-	av, _ := dynamodbattribute.MarshalMap(s)
+	av, _ := attributevalue.MarshalMap(s)
 
 	// create input
 	input := &dynamodb.PutItemInput{
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 		TableName:    &clients.DynamoTable,
 	}
 
 	// add to table
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -96,36 +104,32 @@ func (s *Song) Create() error {
 // Exists checks to see if the song exists in the table already and returns an error if it does
 func (s *Song) Exists() (bool, error) {
 	// input
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(s.PKVal()))
+	skCondition := expression.Key(SortKey).Equal(expression.Value(s.SKVal()))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("songID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for song Exists func")
+	}
+
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
-			},
-		},
-		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
-		ProjectionExpression:   aws.String("songID"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &clients.DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case dynamodb.ErrCodeResourceNotFoundException:
-				return false, nil
-			}
-			logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Error checking if song exists in table")
-			return false, err
-		} else {
-			logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Error checking if song exists in table")
-			return false, err
-		}
+		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Error checking if song exists in table")
+		return false, err
 	}
 
 	// song doesn't exist
@@ -141,13 +145,6 @@ func (s *Song) Exists() (bool, error) {
 
 // Played marks the song as played and records its play time and position
 func (s *Song) Played() error {
-	pk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
-	}
-	sk := dynamodb.AttributeValue{
-		S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
-	}
-
 	// get current played count
 	currentPlayCount, playCountErr := getCurrentPlayCount()
 	if playCountErr != nil {
@@ -156,31 +153,27 @@ func (s *Song) Played() error {
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#PA": aws.String("playedAt"),
-			"#PP": aws.String("playedPosition"),
+		ExpressionAttributeNames: map[string]string{
+			"#PA": "playedAt",
+			"#PP": "playedPosition",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": &pk,
-			":sk": &sk,
-			":pa": {
-				S: s.PlayedAt,
-			},
-			":pp": {
-				N: currentPlayCount,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":pk": &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
+			":sk": &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
+			":pa": &dbTypes.AttributeValueMemberS{Value: *s.PlayedAt},
+			":pp": &dbTypes.AttributeValueMemberN{Value: *currentPlayCount},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": &pk,
-			"SK": &sk,
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 		},
-		ReturnValues:        aws.String("NONE"),
+		ReturnValues:        dbTypes.ReturnValueNone,
 		TableName:           &clients.DynamoTable,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #PA = :pa, #PP = :pp"),
 	}
 
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -196,19 +189,15 @@ func (s *Song) Played() error {
 func (s *Song) Get() error {
 	// get query
 	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongSortKey, s.SongID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 		},
 		TableName: &clients.DynamoTable,
 	}
 
 	// getItem
-	result, err := clients.DynamoClient.GetItem(input)
+	result, err := clients.DynamoClient.GetItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -221,7 +210,7 @@ func (s *Song) Get() error {
 	}
 
 	// unmarshal item into struct
-	err = dynamodbattribute.UnmarshalMap(result.Item, &s)
+	err = attributevalue.UnmarshalMap(result.Item, &s)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("failed to unmarshal dynamo item to group")
 	}
@@ -230,30 +219,33 @@ func (s *Song) Get() error {
 
 // getCurrentPlayCount looks up the current playCount item and returns its value. It should start at 1.
 func getCurrentPlayCount() (*string, error) {
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#V": aws.String("value"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(PlayCountPrimaryKey),
-			},
-			":sk": {
-				S: aws.String(PlayCountSortKey),
-			},
-		},
-		KeyConditionExpression: aws.String("SK = :sk and PK = :pk"),
-		ProjectionExpression:   aws.String("#V"),
-		TableName:              &clients.DynamoTable,
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(PlayCountPrimaryKey))
+	skCondition := expression.Key(SortKey).Equal(expression.Value(PlayCountSortKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("value"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for getCurrentPlayCount func")
 	}
-	result, err := clients.DynamoClient.Query(input)
-	if err != nil || *result.Count == 0 {
+
+	input := &dynamodb.QueryInput{
+		TableName:                 &clients.DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
+	}
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
+	if err != nil || result.Count == 0 {
 		logger.Log.Error().Err(err).Msg("Unable to get the latest song position")
 		return aws.String("0"), err
 	}
 
 	var pc = PlayCount{}
-	unmarshalErr := dynamodbattribute.UnmarshalMap(result.Items[0], &pc)
+	unmarshalErr := attributevalue.UnmarshalMap(result.Items[0], &pc)
 	if unmarshalErr != nil {
 		logger.Log.Error().Err(unmarshalErr).Msg("Unable to unmarshall query result to playCount")
 		return aws.String("0"), unmarshalErr
@@ -264,27 +256,21 @@ func getCurrentPlayCount() (*string, error) {
 // incrementPlayCount increments the current playCount value
 func incrementPlayCount() {
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#V": aws.String("value"),
+		ExpressionAttributeNames: map[string]string{
+			"#V": "value",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":inc": {
-				N: aws.String("1"),
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":inc": &dbTypes.AttributeValueMemberN{Value: "1"},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(PlayCountPrimaryKey),
-			},
-			"SK": {
-				S: aws.String(PlayCountSortKey),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: PlayCountPrimaryKey},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: PlayCountSortKey},
 		},
-		ReturnValues:     aws.String("NONE"),
+		ReturnValues:     dbTypes.ReturnValueNone,
 		TableName:        &clients.DynamoTable,
 		UpdateExpression: aws.String("ADD #V :inc"),
 	}
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Unable to increment the latest song position")
 	}

@@ -1,12 +1,14 @@
 package types
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -70,13 +72,13 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 		Arn:      *endpoint.EndpointArn,
 		Platform: p.Platform,
 	}
-	av, _ := dynamodbattribute.MarshalMap(pe)
+	av, _ := attributevalue.MarshalMap(pe)
 	input := &dynamodb.PutItemInput{
 		TableName:    &clients.DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
-	if _, err = clients.DynamoClient.PutItem(input); err != nil {
+	if _, err = clients.DynamoClient.PutItem(context.TODO(), input); err != nil {
 		logger.Log.Error().Err(err).Str("platformAppArn", p.Arn).Str("endpointArn", *endpoint.EndpointArn).Msg("Error adding endpoint arn to user")
 		return err
 	}
@@ -97,17 +99,13 @@ func (p *PlatformEndpoint) Delete() error {
 
 	// delete platform endpoint from table
 	input := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, p.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, p.Arn)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", UserPrimaryKey, p.UserID)},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, p.Arn)},
 		},
 		TableName: &clients.DynamoTable,
 	}
-	if _, err = clients.DynamoClient.DeleteItem(input); err != nil {
+	if _, err = clients.DynamoClient.DeleteItem(context.TODO(), input); err != nil {
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error deleting endpoint arn from user")
 		return err
 	}
