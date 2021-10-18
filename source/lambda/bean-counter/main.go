@@ -86,7 +86,7 @@ func getVoters(songID string) (voters []string, err error) {
 
 	// input
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
 		IndexName:                 aws.String(types.GSI),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),

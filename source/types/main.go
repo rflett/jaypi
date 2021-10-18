@@ -1,7 +1,9 @@
 package types
 
 import (
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"os"
 )
 
 const (
@@ -33,6 +35,11 @@ const (
 	UserAvatarDomain             = "assets.jaypi.com.au"
 	GroupMembershipLimit         = 10
 	VoteLimit                    = 10
+)
+
+var (
+	JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", os.Getenv("APP_ENV"))
+	DynamoTable      = fmt.Sprintf("jaypi-%s", os.Getenv("APP_ENV"))
 )
 
 type PlayCount struct {

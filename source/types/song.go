@@ -56,7 +56,7 @@ func (s *Song) Delete() error {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete from table
@@ -85,7 +85,7 @@ func (s *Song) Create() error {
 	input := &dynamodb.PutItemInput{
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 	}
 
 	// add to table
@@ -117,7 +117,7 @@ func (s *Song) Exists() (bool, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
@@ -168,7 +168,7 @@ func (s *Song) Played() error {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 		},
 		ReturnValues:        dbTypes.ReturnValueNone,
-		TableName:           &clients.DynamoTable,
+		TableName:           &DynamoTable,
 		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
 		UpdateExpression:    aws.String("SET #PA = :pa, #PP = :pp"),
 	}
@@ -193,7 +193,7 @@ func (s *Song) Get() error {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// getItem
@@ -232,7 +232,7 @@ func getCurrentPlayCount() (*string, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
@@ -267,7 +267,7 @@ func incrementPlayCount() {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: PlayCountSortKey},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("ADD #V :inc"),
 	}
 	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)

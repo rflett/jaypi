@@ -68,7 +68,7 @@ func (g *Group) Create() (status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -122,7 +122,7 @@ func (g *Group) Update() (status int, error error) {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
 		ReturnValues:        dbTypes.ReturnValueNone,
-		TableName:           &clients.DynamoTable,
+		TableName:           &DynamoTable,
 		ConditionExpression: aws.String("#O = :o"),
 		UpdateExpression:    aws.String("SET #N = :n, #UA = :ua"),
 	}
@@ -159,7 +159,7 @@ func (g *Group) NominateOwner(userID string) (status int, error error) {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #O = :o, #UA = :ua"),
 	}
 
@@ -182,7 +182,7 @@ func (g *Group) Get() (status int, error error) {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// getItem
@@ -220,14 +220,14 @@ func (g *Group) Delete() (status int, error error) {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", GroupCodeSortKey, g.Code)},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 	deleteGroupInput := &dynamodb.DeleteItemInput{
 		Key: map[string]dbTypes.AttributeValue{
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete code from table
@@ -279,7 +279,7 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 	// create the new group membership
 	av, _ := attributevalue.MarshalMap(member)
 	putMemberInput := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -310,7 +310,7 @@ func (g *Group) GetCode() (string, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
@@ -382,7 +382,7 @@ func (g *Group) NewCode() error {
 	// add the code to the table
 	av, _ := attributevalue.MarshalMap(gc)
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -417,7 +417,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 
 	// input
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
@@ -467,7 +467,7 @@ func (g *Group) GetGames() ([]Game, error) {
 
 	// input
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 	}
@@ -508,7 +508,7 @@ func validateGroupCode(code string) error {
 
 	// input
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		IndexName:                 aws.String(GSI),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),

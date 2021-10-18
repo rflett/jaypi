@@ -48,7 +48,7 @@ func (g *Game) Create() (status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -89,7 +89,7 @@ func (g *Game) Update() (status int, error error) {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #N = :n, #UA = :ua, #D = :d"),
 	}
 
@@ -112,7 +112,7 @@ func (g *Game) Delete() (status int, error error) {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete from table
@@ -144,7 +144,7 @@ func (g *Game) Exists() (bool, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),

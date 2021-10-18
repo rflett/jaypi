@@ -65,7 +65,7 @@ func (u *User) voteCount() (count int, error error) {
 
 	// input
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
@@ -98,7 +98,7 @@ func (u *User) GenerateAvatarUrl() (avatarUuid string, error error) {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #A = :a"),
 	}
 
@@ -126,7 +126,7 @@ func (u *User) Create() (status int, error error) {
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -181,7 +181,7 @@ func (u *User) Update() (status int, error error) {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
@@ -234,7 +234,7 @@ func (u *User) AddVote(s *Song) (status int, error error) {
 	input := &dynamodb.PutItemInput{
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 	}
 
 	// add to table
@@ -262,7 +262,7 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 				Value: fmt.Sprintf("%s#%s", SongPartitionKey, *songID),
 			},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete from table
@@ -294,7 +294,7 @@ func (u *User) GetVotes() ([]Song, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
@@ -346,7 +346,7 @@ func (u *User) GetGroups() ([]Group, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		IndexName:                 aws.String(GSI),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
@@ -381,7 +381,7 @@ func (u *User) GetByUserID() (status int, error error) {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// getItem
@@ -424,7 +424,7 @@ func (u *User) GetByAuthProviderId() (status int, error error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		IndexName:                 aws.String(GSI),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
@@ -487,7 +487,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 
 	// create input
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		IndexName:                 idx,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
@@ -528,7 +528,7 @@ func (u *User) NewAuthProvider() error {
 	// add the user auth provider to the table
 	av, _ := attributevalue.MarshalMap(uap)
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -559,7 +559,7 @@ func (u *User) UpdatePoints(points int) error {
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("ADD #P :p"),
 	}
 	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
@@ -577,7 +577,7 @@ func (u *User) LeaveGroup(groupID string) (status int, error error) {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", GroupPartitionKey, groupID)},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete membership from table
@@ -614,7 +614,7 @@ func (u *User) CreateToken() (string, error) {
 	}
 
 	// get the signing key
-	input := &secretsmanager.GetSecretValueInput{SecretId: &clients.JWTSigningSecret}
+	input := &secretsmanager.GetSecretValueInput{SecretId: &JWTSigningSecret}
 	secret, err := clients.SecretsClient.GetSecretValue(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("unable to get signing key from secretsmanager")
@@ -646,7 +646,7 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),

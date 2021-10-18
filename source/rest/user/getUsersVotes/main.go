@@ -71,7 +71,7 @@ func GetVotes(u string) ([]types.Song, error) {
 		KeyConditionExpression:    expr.KeyCondition(),
 		ProjectionExpression:      expr.Projection(),
 		FilterExpression:          expr.Filter(),
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
 	}
 
 	userVotes, err := clients.DynamoClient.Query(context.TODO(), input)

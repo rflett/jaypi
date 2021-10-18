@@ -11,12 +11,10 @@ import (
 )
 
 var (
-	awsConfig, _     = config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("countdown"), config.WithRegion("ap-southeast-2"))
-	SQSClient        = sqs.NewFromConfig(awsConfig)
-	SNSClient        = sns.NewFromConfig(awsConfig)
-	DynamoClient     = dynamodb.NewFromConfig(awsConfig)
-	SecretsClient    = secretsmanager.NewFromConfig(awsConfig)
-	S3Client         = s3.NewFromConfig(awsConfig)
-	DynamoTable      = "jaypi-staging"
-	JWTSigningSecret = "jaypi-private-key-staging"
+	awsConfig, _  = config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-southeast-2"))
+	S3Client      = s3.NewFromConfig(awsConfig)
+	SNSClient     = sns.NewFromConfig(awsConfig)
+	SQSClient     = sqs.NewFromConfig(awsConfig)
+	DynamoClient  = dynamodb.NewFromConfig(awsConfig)
+	SecretsClient = secretsmanager.NewFromConfig(awsConfig)
 )

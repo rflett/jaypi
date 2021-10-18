@@ -32,7 +32,7 @@ func GetRecentlyPlayed() ([]types.Song, error) {
 	}
 
 	input := &dynamodb.ScanInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
 		Limit:                     aws.Int32(100),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
@@ -81,7 +81,7 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
 		IndexName:                 aws.String(types.GSI),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
@@ -209,7 +209,7 @@ func UserIsInGroup(userID string, groupID string) (bool, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		TableName:                 &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		KeyConditionExpression:    expr.KeyCondition(),
@@ -302,7 +302,7 @@ func PurgeSongs() {
 			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPartitionKey)},
 		},
 		FilterExpression: aws.String("begins_with(PK, :pk)"),
-		TableName:        &clients.DynamoTable,
+		TableName:        &types.DynamoTable,
 	}
 
 	paginator := dynamodb.NewScanPaginator(clients.DynamoClient, input)
@@ -340,7 +340,7 @@ func SetPlayCount(val string) {
 			types.SortKey:      &dbTypes.AttributeValueMemberS{Value: types.PlayCountSortKey},
 		},
 		ReturnValues:     dbTypes.ReturnValueNone,
-		TableName:        &clients.DynamoTable,
+		TableName:        &types.DynamoTable,
 		UpdateExpression: aws.String("SET #V = :val"),
 	}
 	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)

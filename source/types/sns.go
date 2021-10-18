@@ -78,7 +78,7 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 	}
 	av, _ := attributevalue.MarshalMap(pe)
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
 		ReturnValues: dbTypes.ReturnValueNone,
 	}
@@ -107,7 +107,7 @@ func (p *PlatformEndpoint) Delete() error {
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", UserPartitionKey, p.UserID)},
 			SortKey:      &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s#%s", EndpointSortKey, p.Platform, p.Arn)},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 	if _, err = clients.DynamoClient.DeleteItem(context.TODO(), input); err != nil {
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error deleting endpoint arn from user")
