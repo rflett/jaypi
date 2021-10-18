@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sns"
 	sentryGo "github.com/getsentry/sentry-go"
 	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
@@ -180,9 +180,9 @@ func GetAuthorizerContext(ctx events.APIGatewayProxyRequestContext) *types.Autho
 }
 
 // GetPlatformEndpointAttributes returns a map of the endpoints attributes
-func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
+func GetPlatformEndpointAttributes(arn string) (map[string]string, error) {
 	input := &sns.GetEndpointAttributesInput{EndpointArn: &arn}
-	attributes, err := clients.SNSClient.GetEndpointAttributes(input)
+	attributes, err := clients.SNSClient.GetEndpointAttributes(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("platformEndpointArn", arn).Msg("Error getting platform endpoint attributes")
 	}

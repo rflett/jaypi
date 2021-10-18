@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/dgrijalva/jwt-go"
 	sentryGo "github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
@@ -615,7 +615,7 @@ func (u *User) CreateToken() (string, error) {
 
 	// get the signing key
 	input := &secretsmanager.GetSecretValueInput{SecretId: &clients.JWTSigningSecret}
-	secret, err := clients.SecretsClient.GetSecretValue(input)
+	secret, err := clients.SecretsClient.GetSecretValue(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("unable to get signing key from secretsmanager")
 		return "", err

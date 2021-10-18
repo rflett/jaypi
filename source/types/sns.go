@@ -7,9 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/sns"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 )
@@ -30,23 +29,28 @@ type PlatformEndpoint struct {
 // GetPlatformEndpointFromToken returns a PlatformEndpoint based on the device token
 func (p *PlatformApp) GetPlatformEndpointFromToken(token *string) (platformEndpoint *PlatformEndpoint, err error) {
 	input := &sns.ListEndpointsByPlatformApplicationInput{PlatformApplicationArn: &p.Arn}
-	err = clients.SNSClient.ListEndpointsByPlatformApplicationPages(input, func(page *sns.ListEndpointsByPlatformApplicationOutput, lastPage bool) bool {
+
+	paginator := sns.NewListEndpointsByPlatformApplicationPaginator(clients.SNSClient, input)
+
+	for paginator.HasMorePages() && platformEndpoint == nil {
+		page, pageErr := paginator.NextPage(context.TODO())
+		if pageErr != nil {
+			logger.Log.Error().Err(pageErr).Msg("error getting NextPage from GetPlatformEndpointFromToken paginator")
+			return nil, pageErr
+		}
+
 		for _, endpoint := range page.Endpoints {
-			if *endpoint.Attributes["Token"] == *token {
+			if endpoint.Attributes["Token"] == *token {
 				platformEndpoint = &PlatformEndpoint{
-					UserID:   *endpoint.Attributes["CustomUserData"],
+					UserID:   endpoint.Attributes["CustomUserData"],
 					Arn:      *endpoint.EndpointArn,
 					Platform: p.Platform,
 				}
-				return false
+				break
 			}
 		}
-		return !lastPage
-	})
-	if err != nil {
-		logger.Log.Error().Err(err).Str("platformAppArn", p.Arn).Msg("error listing endpoints for platform app")
-		return nil, err
 	}
+
 	return platformEndpoint, nil
 }
 
@@ -58,7 +62,7 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 		PlatformApplicationArn: &p.Arn,
 		Token:                  token,
 	}
-	endpoint, err := clients.SNSClient.CreatePlatformEndpoint(snsInput)
+	endpoint, err := clients.SNSClient.CreatePlatformEndpoint(context.TODO(), snsInput)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("platformAppArn", p.Arn).Msg("Error creating platform endpoint")
 		return err
@@ -91,7 +95,7 @@ func (p *PlatformApp) CreatePlatformEndpoint(userID string, token *string) error
 func (p *PlatformEndpoint) Delete() error {
 	// create the endpoint
 	snsInput := &sns.DeleteEndpointInput{EndpointArn: &p.Arn}
-	_, err := clients.SNSClient.DeleteEndpoint(snsInput)
+	_, err := clients.SNSClient.DeleteEndpoint(context.TODO(), snsInput)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error deleting endpoint")
 		return err
@@ -121,16 +125,10 @@ func (p *PlatformEndpoint) SendAppleNotification(notification *Notification) err
 		MessageStructure: aws.String("json"),
 		TargetArn:        &p.Arn,
 	}
-	message, err := clients.SNSClient.Publish(input)
+	message, err := clients.SNSClient.Publish(context.TODO(), input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == sns.ErrCodeEndpointDisabledException {
-				logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Cannot send ios notification because endpoint is disabled")
-				return p.Delete()
-			}
-		}
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error publishing ios notification to SNS")
-		return err
+		return p.Delete()
 	}
 
 	logger.Log.Info().Str("userID", p.UserID).Str("messageID", *message.MessageId).Msg("Successfully sent ios notification")
@@ -144,15 +142,10 @@ func (p *PlatformEndpoint) SendAndroidNotification(notification *Notification) e
 		MessageStructure: aws.String("json"),
 		TargetArn:        &p.Arn,
 	}
-	message, err := clients.SNSClient.Publish(input)
+	message, err := clients.SNSClient.Publish(context.TODO(), input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == sns.ErrCodeEndpointDisabledException {
-				logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Cannot send android notification because endpoint is disabled")
-				return p.Delete()
-			}
-		}
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error publishing android notification to SNS")
+		return p.Delete()
 	}
 
 	logger.Log.Info().Str("userID", p.UserID).Str("messageID", *message.MessageId).Msg("Successfully sent android notification")
@@ -172,19 +165,14 @@ func (p *PlatformEndpoint) SendNotification(n *Notification) error {
 		return errors.New("unsupported platform")
 	}
 
-	resp, err := clients.SNSClient.Publish(&sns.PublishInput{
+	resp, err := clients.SNSClient.Publish(context.TODO(), &sns.PublishInput{
 		Message:          &message,
 		MessageStructure: aws.String("json"),
 		TargetArn:        &p.Arn,
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == sns.ErrCodeEndpointDisabledException {
-				logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Cannot send android notification because endpoint is disabled")
-				return p.Delete()
-			}
-		}
 		logger.Log.Error().Err(err).Str("endpointArn", p.Arn).Msg("Error publishing android notification to SNS")
+		return p.Delete()
 	}
 
 	logger.Log.Info().Str("userID", p.UserID).Str("messageID", *resp.MessageId).Msg("Successfully sent android notification")

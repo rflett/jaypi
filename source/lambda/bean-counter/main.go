@@ -10,8 +10,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	sqsTypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/dchest/uniuri"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
@@ -35,14 +36,14 @@ func queueForScorer(points *int, userIDs []string) error {
 		}
 
 		// create the batch of messageBatch entries
-		var entries []*sqs.SendMessageBatchRequestEntry
+		var entries []sqsTypes.SendMessageBatchRequestEntry
 		for _, userID := range userIDs[i:j] {
-			mb, _ := json.Marshal(types.ScoreTakerBody{UserID: userID, Points: *points})
-			e := sqs.SendMessageBatchRequestEntry{
+			messageBody, _ := json.Marshal(types.ScoreTakerBody{UserID: userID, Points: *points})
+			entry := sqsTypes.SendMessageBatchRequestEntry{
 				Id:          aws.String(uniuri.NewLen(6)),
-				MessageBody: aws.String(string(mb)),
+				MessageBody: aws.String(string(messageBody)),
 			}
-			entries = append(entries, &e)
+			entries = append(entries, entry)
 		}
 
 		// send the batch to SQS
@@ -50,7 +51,7 @@ func queueForScorer(points *int, userIDs []string) error {
 			QueueUrl: &scorerQueue,
 			Entries:  entries,
 		}
-		sendOutput, sendErr := clients.SQSClient.SendMessageBatch(input)
+		sendOutput, sendErr := clients.SQSClient.SendMessageBatch(context.TODO(), input)
 		if sendErr != nil {
 			logger.Log.Error().Err(sendErr).Msg("Unable to send message batch to SQS")
 			return sendErr

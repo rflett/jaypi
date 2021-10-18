@@ -1,10 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
@@ -34,13 +35,15 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// get the pre-sign url
-	req, _ := clients.S3Client.GetObjectRequest(&s3.GetObjectInput{
+	input := &s3.GetObjectInput{
 		Bucket: &bucket,
 		Key:    &avatarUuid,
+	}
+	psClient := s3.NewPresignClient(clients.S3Client, func(options *s3.PresignOptions) {
+		options.Expires = 15 * time.Minute
 	})
 
-	// pre-sign the url for 15 minutes
-	urlStr, err := req.Presign(15 * time.Minute)
+	urlStr, err := psClient.PresignGetObject(context.TODO(), input)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
