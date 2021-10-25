@@ -17,9 +17,25 @@ import (
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
+	"math/rand"
 	"net/http"
 	"sort"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
 
 // GetRecentlyPlayed returns the songs that have been played
 func GetRecentlyPlayed() ([]types.Song, error) {

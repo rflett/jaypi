@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	awsConfig, _  = config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-southeast-2"))
+	awsConfig, _  = config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("countdown"), config.WithRegion("ap-southeast-2"))
 	S3Client      = s3.NewFromConfig(awsConfig)
 	SNSClient     = sns.NewFromConfig(awsConfig)
 	SQSClient     = sqs.NewFromConfig(awsConfig)

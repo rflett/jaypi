@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/dgrijalva/jwt-go"
 	"os"
 )
@@ -35,12 +36,38 @@ const (
 	UserAvatarDomain             = "assets.jaypi.com.au"
 	GroupMembershipLimit         = 10
 	VoteLimit                    = 10
+	AppEnvVar                    = "APP_ENV"
+	AssetsBucketVar              = "ASSETS_BUCKET"
+	TestAuthProvider             = "delegator"
+	TestAuthProviderId           = "ryan.flett1@gmail.com"
+	TestAuthProviderName         = "Ryan"
+	TestAuthProvierUserID        = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
+	TestAuthProvierPass          = "foo"
 )
 
 var (
-	JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", os.Getenv("APP_ENV"))
-	DynamoTable      = fmt.Sprintf("jaypi-%s", os.Getenv("APP_ENV"))
+	JWTSigningSecret   = "jaypi-private-key-staging"
+	DynamoTable        = "jaypi-staging"
+	AssetsBucket       = "jaypi-staging-rfacc"
+	TestRequestContext = events.APIGatewayProxyRequestContext{
+		Authorizer: map[string]interface{}{
+			"AuthProvider":   TestAuthProvider,
+			"AuthProviderId": TestAuthProviderId,
+			"Name":           TestAuthProviderName,
+			"UserID":         TestAuthProvierUserID,
+		},
+	}
 )
+
+func init() {
+	if v, ok := os.LookupEnv(AppEnvVar); ok {
+		DynamoTable = fmt.Sprintf("jaypi-%s", v)
+		JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", v)
+	}
+	if v, ok := os.LookupEnv(AssetsBucketVar); ok {
+		AssetsBucket = v
+	}
+}
 
 type PlayCount struct {
 	Value *string `json:"value"`
@@ -95,4 +122,15 @@ type songVote struct {
 	SongID string `json:"songID"`
 	UserID string `json:"userID"`
 	Rank   int    `json:"rank"`
+}
+
+func (s *songVote) GetAsSong() (Song, error) {
+	song := Song{
+		SongID: s.SongID,
+	}
+	if err := song.Get(); err != nil {
+		return Song{}, err
+	}
+	song.Rank = &s.Rank
+	return song, nil
 }

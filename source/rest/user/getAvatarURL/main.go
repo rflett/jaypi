@@ -10,12 +10,7 @@ import (
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
-	"os"
 	"time"
-)
-
-var (
-	bucket = os.Getenv("ASSETS_BUCKET")
 )
 
 // Handler is our handle on life
@@ -36,20 +31,20 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// get the pre-sign url
 	input := &s3.GetObjectInput{
-		Bucket: &bucket,
+		Bucket: &types.AssetsBucket,
 		Key:    &avatarUuid,
 	}
 	psClient := s3.NewPresignClient(clients.S3Client, func(options *s3.PresignOptions) {
 		options.Expires = 15 * time.Minute
 	})
 
-	urlStr, err := psClient.PresignGetObject(context.TODO(), input)
+	presignResponse, err := psClient.PresignGetObject(context.TODO(), input)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)
 	}
 
 	// response
-	return services.ReturnJSON(urlStr, http.StatusCreated)
+	return services.ReturnJSON(presignResponse.URL, http.StatusCreated)
 }
 
 func main() {

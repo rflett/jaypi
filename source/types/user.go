@@ -285,9 +285,9 @@ func (u *User) GetVotes() ([]Song, error) {
 	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("rank"), expression.Name("songID"))
+	//projExpr := expression.NamesList(expression.Name("rank"), expression.Name("songID"))
 
-	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).Build()
 
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error building GetVotes expression")
@@ -298,33 +298,34 @@ func (u *User) GetVotes() ([]Song, error) {
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
-		ProjectionExpression:      expr.Projection(),
+		//ProjectionExpression:      expr.Projection(),
 	}
 
 	userVotes, err := clients.DynamoClient.Query(context.TODO(), input)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error querying users votes")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting users votes")
 		return []Song{}, err
 	}
 
 	var votes []Song = nil
 	for _, vote := range userVotes.Items {
+
+		// unmarshall the vote
+		songVote := songVote{}
+		if err = attributevalue.UnmarshalMap(vote, &songVote); err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to songVote")
+			continue
+		}
+
+		// convert the vote to a full song record
 		song := Song{}
-		var voteRank int
-		if err = attributevalue.UnmarshalMap(vote, &song); err != nil {
-			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote map to song")
+		song, err = songVote.GetAsSong()
+		if err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to get songVote as song")
 			continue
 		}
 
-		// TODO this has issues, I think song.Get() overwrites the rank with nil?
-		voteRank = *song.Rank
-
-		// fill out the rest of the song attributes
-		if err = song.Get(); err != nil {
-			logger.Log.Error().Err(err).Msg("Unable to get song")
-			continue
-		}
-		song.Rank = &voteRank
+		// append to return object
 		votes = append(votes, song)
 	}
 	return votes, nil
@@ -335,7 +336,7 @@ func (u *User) GetGroups() ([]Group, error) {
 	// get the users in the group
 	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupPartitionKey))
 	skCondition := expression.Key(SortKey).Equal(expression.Value(u.PKVal()))
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
 	projExpr := expression.NamesList(expression.Name("groupID"))
 
@@ -413,7 +414,7 @@ func (u *User) GetByAuthProviderId() (status int, error error) {
 	skCondition := expression.Key(SortKey).Equal(
 		expression.Value(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
 	)
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
 	projExpr := expression.NamesList(expression.Name("userID"))
 
@@ -478,7 +479,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 	}
 
 	projExpr := expression.NamesList(expression.Name("userID"))
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
 	if err != nil {
@@ -541,7 +542,7 @@ func (u *User) NewAuthProvider() error {
 	}
 
 	// success
-	logger.Log.Info().Str("userID", u.UserID).Str("provider", *u.AuthProvider).Msg("Successfully user auth provider to table")
+	logger.Log.Info().Str("userID", u.UserID).Str("provider", *u.AuthProvider).Msg("Successfully put NewAuthProvider in database")
 	return nil
 }
 

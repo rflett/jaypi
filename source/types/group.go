@@ -312,6 +312,7 @@ func (g *Group) GetCode() (string, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
 	}
