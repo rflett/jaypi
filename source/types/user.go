@@ -67,6 +67,7 @@ func (u *User) voteCount() (count int, error error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames: expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
 	}
@@ -285,8 +286,6 @@ func (u *User) GetVotes() ([]Song, error) {
 	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	//projExpr := expression.NamesList(expression.Name("rank"), expression.Name("songID"))
-
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).Build()
 
 	if err != nil {
@@ -298,7 +297,6 @@ func (u *User) GetVotes() ([]Song, error) {
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
-		//ProjectionExpression:      expr.Projection(),
 	}
 
 	userVotes, err := clients.DynamoClient.Query(context.TODO(), input)
@@ -649,6 +647,7 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames: expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
 	}

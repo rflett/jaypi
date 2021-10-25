@@ -420,6 +420,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames: expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
 	}
@@ -470,6 +471,7 @@ func (g *Group) GetGames() ([]Game, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 	}
 
@@ -497,7 +499,7 @@ func validateGroupCode(code string) error {
 	// input
 	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupCodePartitionKey))
 	skCondition := expression.Key(SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", GroupCodeSortKey, code)))
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
 	projExpr := expression.NamesList(expression.Name("code"))
 
@@ -512,6 +514,7 @@ func validateGroupCode(code string) error {
 		TableName:                 &DynamoTable,
 		IndexName:                 aws.String(GSI),
 		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
 	}

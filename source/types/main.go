@@ -42,7 +42,8 @@ const (
 	TestAuthProviderId           = "ryan.flett1@gmail.com"
 	TestAuthProviderName         = "Ryan"
 	TestAuthProvierUserID        = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
-	TestAuthProvierPass          = "foo"
+	TestAuthProviderGroupID        = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
+	TestAuthProvierPass          = "Socom#3"
 )
 
 var (

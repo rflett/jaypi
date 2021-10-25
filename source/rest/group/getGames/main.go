@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-type responseBody struct {
+type ResponseBody struct {
 	Games []types.Game `json:"games"`
 }
 
@@ -33,7 +33,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// return the members
-	rb := responseBody{Games: games}
+	rb := ResponseBody{Games: games}
 	return services.ReturnJSON(rb, http.StatusOK)
 }
 

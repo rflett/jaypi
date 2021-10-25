@@ -9,15 +9,11 @@ import (
 	"testing"
 )
 
-func TestGetUser(t *testing.T) {
+func TestGetGames(t *testing.T) {
 	request := events.APIGatewayProxyRequest{
 		RequestContext: types.TestRequestContext,
 		PathParameters: map[string]string{
-			"userId": types.TestAuthProvierUserID,
-		},
-		QueryStringParameters: map[string]string{
-			"withVotes":  "true",
-			"withGroups": "true",
+			"groupId": types.TestAuthProviderGroupID,
 		},
 	}
 
@@ -25,12 +21,11 @@ func TestGetUser(t *testing.T) {
 	assert.Nil(t, err)
 
 	if assert.NotNil(t, response) {
-		getUserResponse := types.User{}
-		err = json.Unmarshal([]byte(response.Body), &getUserResponse)
+		rb := ResponseBody{}
+		err = json.Unmarshal([]byte(response.Body), &rb)
 		assert.Nil(t, err)
 
 		assert.Equal(t, http.StatusOK, response.StatusCode, "Expected 200 OK status")
-		assert.GreaterOrEqual(t, len(*getUserResponse.Votes), 1)
-		assert.GreaterOrEqual(t, len(*getUserResponse.Groups), 1)
+		assert.GreaterOrEqual(t, len(rb.Games), 1)
 	}
 }

@@ -34,7 +34,7 @@ func RandStringRunes(n int) string {
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
-	return string(b)
+	return fmt.Sprintf("test-%s", string(b))
 }
 
 // GetRecentlyPlayed returns the songs that have been played
