@@ -1,39 +1,61 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/sns"
 	sentryGo "github.com/getsentry/sentry-go"
 	"golang.org/x/crypto/bcrypt"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
+	"math/rand"
 	"net/http"
 	"sort"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return fmt.Sprintf("test-%s", string(b))
+}
 
 // GetRecentlyPlayed returns the songs that have been played
 func GetRecentlyPlayed() ([]types.Song, error) {
 	// input
+	condition := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
+	expr, err := expression.NewBuilder().WithCondition(condition).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetRecentlyPlayed func")
+	}
+
 	input := &dynamodb.ScanInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", types.SongPrimaryKey)),
-			},
-		},
-		FilterExpression: aws.String("begins_with(PK, :pk)"),
-		TableName:        &clients.DynamoTable,
-		Limit:            aws.Int64(100),
+		TableName:                 &types.DynamoTable,
+		Limit:                     aws.Int32(100),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
 	}
 
 	// get songs from db
-	recentSongs, err := clients.DynamoClient.Scan(input)
+	recentSongs, err := clients.DynamoClient.Scan(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("error getting recent songs")
 		return []types.Song{}, err
@@ -43,7 +65,7 @@ func GetRecentlyPlayed() ([]types.Song, error) {
 	var songs []types.Song = nil
 	for _, recentSong := range recentSongs.Items {
 		song := types.Song{}
-		if err = dynamodbattribute.UnmarshalMap(recentSong, &song); err != nil {
+		if err = attributevalue.UnmarshalMap(recentSong, &song); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal recentSong to song")
 			continue
 		}
@@ -62,23 +84,29 @@ func GetRecentlyPlayed() ([]types.Song, error) {
 // GetGroupFromCode returns the groupID based on the group code
 func GetGroupFromCode(code string) (*types.Group, error) {
 	// input
+	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.GroupCodePartitionKey))
+	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.GroupCodeSortKey, code)))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("groupID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetGroupFromCode func")
+	}
+
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.GroupCodeSortKey, code)),
-			},
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", types.GroupCodePrimaryKey)),
-			},
-		},
-		IndexName:              aws.String(types.GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		ProjectionExpression:   aws.String("groupID"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
+		IndexName:                 aws.String(types.GSI),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -95,7 +123,7 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 
 	// unmarshal groupID into the Group struct
 	gc := types.GroupCode{}
-	err = dynamodbattribute.UnmarshalMap(result.Items[0], &gc)
+	err = attributevalue.UnmarshalMap(result.Items[0], &gc)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("code", code).Msg("error unmarshalling code to GroupCode")
 		fmt.Printf("Failed to unmarshal Record, %v", err)
@@ -168,9 +196,9 @@ func GetAuthorizerContext(ctx events.APIGatewayProxyRequestContext) *types.Autho
 }
 
 // GetPlatformEndpointAttributes returns a map of the endpoints attributes
-func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
+func GetPlatformEndpointAttributes(arn string) (map[string]string, error) {
 	input := &sns.GetEndpointAttributesInput{EndpointArn: &arn}
-	attributes, err := clients.SNSClient.GetEndpointAttributes(input)
+	attributes, err := clients.SNSClient.GetEndpointAttributes(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("platformEndpointArn", arn).Msg("Error getting platform endpoint attributes")
 	}
@@ -180,22 +208,32 @@ func GetPlatformEndpointAttributes(arn string) (map[string]*string, error) {
 // UserIsInGroup returns whether a user is a member of a group
 func UserIsInGroup(userID string, groupID string) (bool, error) {
 	// input
+	pkCondition := expression.Key(types.PartitionKey).Equal(
+		expression.Value(fmt.Sprintf("%s#%s", types.GroupPartitionKey, groupID)),
+	)
+	skCondition := expression.Key(types.SortKey).Equal(
+		expression.Value(fmt.Sprintf("%s#%s", types.UserPartitionKey, userID)),
+	)
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("userID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for UserIsInGroup func")
+	}
+
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.GroupPrimaryKey, groupID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", types.UserPrimaryKey, userID)),
-			},
-		},
-		KeyConditionExpression: aws.String("PK = :pk and SK = :sk"),
-		ProjectionExpression:   aws.String("userID"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &types.DynamoTable,
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", userID).Str("groupID", groupID).Msg("Unable to check if user is in group")
 		return false, err
@@ -273,62 +311,55 @@ func ReturnError(err error, status int) (events.APIGatewayProxyResponse, error) 
 }
 
 // PurgeSongs removes all songs from the table
-func PurgeSongs() error {
+func PurgeSongs() {
 	// input
 	input := &dynamodb.ScanInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", types.SongPrimaryKey)),
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPartitionKey)},
 		},
 		FilterExpression: aws.String("begins_with(PK, :pk)"),
-		TableName:        &clients.DynamoTable,
+		TableName:        &types.DynamoTable,
 	}
 
-	scanErr := clients.DynamoClient.ScanPages(input, func(page *dynamodb.ScanOutput, lastPage bool) bool {
+	paginator := dynamodb.NewScanPaginator(clients.DynamoClient, input)
+
+	for paginator.HasMorePages() {
+		page, pageErr := paginator.NextPage(context.TODO())
+		if pageErr != nil {
+			logger.Log.Error().Err(pageErr).Msg("error getting NextPage from PurgeSongs paginator")
+			break
+		}
+
 		for _, item := range page.Items {
 			song := types.Song{}
-			unMarshErr := dynamodbattribute.UnmarshalMap(item, &song)
+			unMarshErr := attributevalue.UnmarshalMap(item, &song)
 			if unMarshErr != nil {
 				logger.Log.Error().Err(unMarshErr).Msg("error unmarshalling item to song")
 			} else {
 				_ = song.Delete()
 			}
 		}
-		return !lastPage
-	})
-
-	if scanErr != nil {
-		logger.Log.Error().Err(scanErr).Msg("error scanning songs for purging")
 	}
-
-	return scanErr
 }
 
 // SetPlayCount sets the current playCount to a specific value
 func SetPlayCount(val string) {
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#V": aws.String("value"),
+		ExpressionAttributeNames: map[string]string{
+			"#V": "value",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":val": {
-				N: &val,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":val": &dbTypes.AttributeValueMemberS{Value: val},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(types.PlayCountPrimaryKey),
-			},
-			"SK": {
-				S: aws.String(types.PlayCountSortKey),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: types.PlayCountPartitionKey},
+			types.SortKey:      &dbTypes.AttributeValueMemberS{Value: types.PlayCountSortKey},
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &types.DynamoTable,
 		UpdateExpression: aws.String("SET #V = :val"),
 	}
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Unable to set the play count")
 	}

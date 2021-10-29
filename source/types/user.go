@@ -1,13 +1,15 @@
 package types
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/dgrijalva/jwt-go"
 	sentryGo "github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
@@ -37,56 +39,46 @@ type User struct {
 	Password       *string  `json:"-" dynamodbav:"password"`
 }
 
-// UserClaims are the custom claims that embedded into the JWT token for authentication
-type UserClaims struct {
-	Name           string  `json:"name"`
-	Picture        *string `json:"picture"`
-	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
-	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
-	jwt.StandardClaims
+// return the partition key value for a user
+func (u *User) PKVal() string {
+	return fmt.Sprintf("%s#%s", UserPartitionKey, u.UserID)
 }
 
-// userAuthProvider represents a user and their AuthProviderId
-type userAuthProvider struct {
-	PK             string `json:"-" dynamodbav:"PK"`
-	SK             string `json:"-" dynamodbav:"SK"`
-	UserID         string `json:"userID"`
-	AuthProviderId string `json:"authProviderId"`
-	AuthProvider   string `json:"authProvider"`
-}
-
-// songVote is a votes in a users top 10
-type songVote struct {
-	PK     string `json:"-" dynamodbav:"PK"`
-	SK     string `json:"-" dynamodbav:"SK"`
-	SongID string `json:"songID"`
-	UserID string `json:"userID"`
-	Rank   int    `json:"rank"`
+// return the sort key value for a user
+func (u *User) SKVal() string {
+	return fmt.Sprintf("%s#%s", UserSortKey, u.UserID)
 }
 
 // voteCount returns the number of votes a user already has
 func (u *User) voteCount() (count int, error error) {
-	// input
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#", SongPrimaryKey)),
-			},
-		},
-		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("userID"),
-		TableName:              &clients.DynamoTable,
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(u.PKVal()))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("songID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for voteCount func")
 	}
 
-	queryResult, queryErr := clients.DynamoClient.Query(input)
+	// input
+	input := &dynamodb.QueryInput{
+		TableName:                 &DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
+	}
+
+	queryResult, queryErr := clients.DynamoClient.Query(context.TODO(), input)
 	if queryErr != nil {
-		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting user song count")
+		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error querying user voteCount")
 		return 0, queryErr
 	}
-	return int(*queryResult.Count), nil
+
+	return int(queryResult.Count), nil
 }
 
 // GenerateAvatarUrl generates a new avatar UUID and sets it on the user
@@ -96,32 +88,26 @@ func (u *User) GenerateAvatarUrl() (avatarUuid string, error error) {
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#A": aws.String("avatarUrl"),
+		ExpressionAttributeNames: map[string]string{
+			"#A": "avatarUrl",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":a": {
-				S: &avatarUrl,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":a": &dbTypes.AttributeValueMemberS{Value: avatarUrl},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #A = :a"),
 	}
 
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error creating new avatar url for user")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error updating user avatarUrl")
 		return "", err
 	}
 
@@ -132,28 +118,29 @@ func (u *User) GenerateAvatarUrl() (avatarUuid string, error error) {
 func (u *User) Create() (status int, error error) {
 	// set fields
 	u.UserID = uuid.NewString()
-	u.PK = fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)
-	u.SK = fmt.Sprintf("%s#%s", UserSortKey, u.UserID)
+	u.PK = u.PKVal()
+	u.SK = u.SKVal()
 	u.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+
 	// create item
-	av, _ := dynamodbattribute.MarshalMap(u)
+	av, _ := attributevalue.MarshalMap(u)
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
 
 	// add to table
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Error adding user to table")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error putting user in db")
 		return http.StatusInternalServerError, err
 	}
-	logger.Log.Info().Str("userID", u.UserID).Msg("Successfully added user to table")
+	logger.Log.Info().Str("userID", u.UserID).Msg("Successfully put user in db")
 
 	// create their auth provider
 	authProviderErr := u.NewAuthProvider()
@@ -182,57 +169,29 @@ func (u *User) Update() (status int, error error) {
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#NN": aws.String("nickName"),
-			"#UA": aws.String("updatedAt"),
+		ExpressionAttributeNames: map[string]string{
+			"#NN": "nickName",
+			"#UA": "updatedAt",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":nn": {
-				S: aws.String(*u.NickName),
-			},
-			":ua": {
-				S: u.UpdatedAt,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":nn": &dbTypes.AttributeValueMemberS{Value: *u.NickName},
+			":ua": &dbTypes.AttributeValueMemberS{Value: *u.UpdatedAt},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #NN = :nn, #UA = :ua"),
 	}
 
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeConditionalCheckFailedException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
-			}
-			logger.Log.Error().Err(aerr).Str("userID", u.UserID).Msg("error updating user")
-			return responseStatus, aerr
-		} else {
-			logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error updating user")
-			return http.StatusInternalServerError, err
-		}
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error updating user item")
+		return http.StatusInternalServerError, err
 	}
 
 	return http.StatusNoContent, nil
@@ -264,33 +223,31 @@ func (u *User) AddVote(s *Song) (status int, error error) {
 		return http.StatusBadRequest, tooManyCountsErr
 	}
 
-	// set fields
-	sv := songVote{
-		PK:     fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID),
-		SK:     fmt.Sprintf("%s#%s", SongPrimaryKey, s.SongID),
+	// create item
+	av, _ := attributevalue.MarshalMap(songVote{
+		PK:     u.PKVal(),
+		SK:     s.PKVal(),
 		SongID: s.SongID,
 		UserID: u.UserID,
 		Rank:   *s.Rank,
-	}
+	})
 
-	// create item
-	av, _ := dynamodbattribute.MarshalMap(sv)
 	input := &dynamodb.PutItemInput{
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
-		TableName:    &clients.DynamoTable,
+		ReturnValues: dbTypes.ReturnValueNone,
+		TableName:    &DynamoTable,
 	}
 
 	// add to table
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Str("songID", s.SongID).Msg("Error adding votes")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Str("songID", s.SongID).Msg("Error adding vote for user")
 		return http.StatusInternalServerError, err
 	}
 
-	logger.Log.Info().Str("userID", u.UserID).Str("songID", s.SongID).Msg("Added user votes")
+	logger.Log.Info().Str("userID", u.UserID).Str("songID", s.SongID).Int("Rank", *s.Rank).Msg("Added user vote")
 	return http.StatusNoContent, nil
 }
 
@@ -298,23 +255,23 @@ func (u *User) AddVote(s *Song) (status int, error error) {
 func (u *User) RemoveVote(songID *string) (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{
+				Value: u.PKVal(),
 			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", SongPrimaryKey, *songID)),
+			SortKey: &dbTypes.AttributeValueMemberS{
+				Value: fmt.Sprintf("%s#%s", SongPartitionKey, *songID),
 			},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete from table
-	_, err := clients.DynamoClient.DeleteItem(input)
+	_, err := clients.DynamoClient.DeleteItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("songID", *songID).Str("userID", u.UserID).Msg("Error removing song from user")
+		logger.Log.Error().Err(err).Str("songID", *songID).Str("userID", u.UserID).Msg("Error removing users vote")
 		return http.StatusInternalServerError, err
 	}
 
@@ -325,25 +282,24 @@ func (u *User) RemoveVote(songID *string) (status int, error error) {
 // GetVotes returns a users votes
 func (u *User) GetVotes() ([]Song, error) {
 	// get the users votes
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#", SongPrimaryKey)),
-			},
-		},
-		ExpressionAttributeNames: map[string]*string{
-			"#R": aws.String("rank"),
-			"#S": aws.String("songID"),
-		},
-		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("#S, #R"),
-		TableName:              &clients.DynamoTable,
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(u.PKVal()))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error building GetVotes expression")
 	}
 
-	userVotes, err := clients.DynamoClient.Query(input)
+	input := &dynamodb.QueryInput{
+		TableName:                 &DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	}
+
+	userVotes, err := clients.DynamoClient.Query(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting users votes")
 		return []Song{}, err
@@ -351,20 +307,23 @@ func (u *User) GetVotes() ([]Song, error) {
 
 	var votes []Song = nil
 	for _, vote := range userVotes.Items {
-		song := Song{}
-		var voteRank int
-		if err = dynamodbattribute.UnmarshalMap(vote, &song); err != nil {
+
+		// unmarshall the vote
+		songVote := songVote{}
+		if err = attributevalue.UnmarshalMap(vote, &songVote); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal vote to songVote")
 			continue
 		}
-		voteRank = *song.Rank
 
-		// fill out the rest of the song attributes
-		if err = song.Get(); err != nil {
-			logger.Log.Error().Err(err).Msg("Unable to get song")
+		// convert the vote to a full song record
+		song := Song{}
+		song, err = songVote.GetAsSong()
+		if err != nil {
+			logger.Log.Error().Err(err).Msg("Unable to get songVote as song")
 			continue
 		}
-		song.Rank = &voteRank
+
+		// append to return object
 		votes = append(votes, song)
 	}
 	return votes, nil
@@ -386,30 +345,24 @@ func (u *User) GetGroups() ([]Group, error) {
 	}
 
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", GroupPrimaryKey)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-		},
-		IndexName:              aws.String(GSI),
-		ProjectionExpression:   aws.String("groupID"),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &DynamoTable,
+		IndexName:                 aws.String(GSI),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
-	groupMemberships, err := clients.DynamoClient.Query(input)
+	groupMemberships, err := clients.DynamoClient.Query(context.TODO(), input)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting users groups")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error querying users groups")
 		return []Group{}, err
 	}
 
 	var groups []Group = nil
 	for _, membership := range groupMemberships.Items {
 		group := Group{}
-		if err = dynamodbattribute.UnmarshalMap(membership, &group); err != nil {
+		if err = attributevalue.UnmarshalMap(membership, &group); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal group to Group")
 			continue
 		}
@@ -423,42 +376,20 @@ func (u *User) GetGroups() ([]Group, error) {
 func (u *User) GetByUserID() (status int, error error) {
 	// get query
 	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// getItem
-	result, err := clients.DynamoClient.GetItem(input)
+	result, err := clients.DynamoClient.GetItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
-			}
-			logger.Log.Error().Err(aerr).Str("userID", u.UserID).Msg("error getting user from table")
-			return responseStatus, aerr
-		} else {
-			logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting user from table")
-			return http.StatusInternalServerError, err
-		}
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error getting user from database")
+		return http.StatusInternalServerError, err
 	}
 
 	if len(result.Item) == 0 {
@@ -466,9 +397,9 @@ func (u *User) GetByUserID() (status int, error error) {
 	}
 
 	// unmarshal item into struct
-	err = dynamodbattribute.UnmarshalMap(result.Item, &u)
+	err = attributevalue.UnmarshalMap(result.Item, &u)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item map to user")
 	}
 
 	return http.StatusOK, nil
@@ -477,23 +408,31 @@ func (u *User) GetByUserID() (status int, error error) {
 // GetByUserID the user from the table by their oauth id
 func (u *User) GetByAuthProviderId() (status int, error error) {
 	// input
+	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", UserAuthProviderPartitionKey))
+	skCondition := expression.Key(SortKey).Equal(
+		expression.Value(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
+	)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
+
+	projExpr := expression.NamesList(expression.Name("userID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error building GetByAuthProviderId expression")
+	}
+
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
-			},
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
-			},
-		},
-		IndexName:              aws.String(GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		ProjectionExpression:   aws.String("userID"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &DynamoTable,
+		IndexName:                 aws.String(GSI),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -506,9 +445,9 @@ func (u *User) GetByAuthProviderId() (status int, error error) {
 	}
 
 	// unmarshal item into user
-	err = dynamodbattribute.UnmarshalMap(result.Items[0], &u)
+	err = attributevalue.UnmarshalMap(result.Items[0], &u)
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item to user")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("failed to unmarshal dynamo item map to user")
 	}
 
 	// fill the user out
@@ -518,58 +457,50 @@ func (u *User) GetByAuthProviderId() (status int, error error) {
 
 // Exists checks to see if a user exists. You can lookup via UserID or AuthProviderId.
 func (u *User) Exists(lookup string) (bool, error) {
-	var pk, sk *dynamodb.AttributeValue
-	var kce string
+	var pkCondition, skCondition expression.KeyConditionBuilder
 	var idx *string
 
 	switch lookup {
 	case "UserID":
-		pk = &dynamodb.AttributeValue{
-			S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-		}
-		sk = &dynamodb.AttributeValue{
-			S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-		}
-		kce = "PK = :pk and SK = :sk"
-		idx = nil
+		pkCondition = expression.Key(PartitionKey).Equal(expression.Value(u.PKVal()))
+		skCondition = expression.Key(SortKey).Equal(expression.Value(u.SKVal()))
 	case "AuthProviderId":
-		pk = &dynamodb.AttributeValue{
-			S: aws.String(fmt.Sprintf("%s#", UserAuthProviderPrimaryKey)),
-		}
-		sk = &dynamodb.AttributeValue{
-			S: aws.String(fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId)),
-		}
 		idx = aws.String(GSI)
-		kce = "SK = :sk and begins_with(PK, :pk)"
+		pkCondition = expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", UserAuthProviderPartitionKey))
+		skCondition = expression.Key(SortKey).Equal(
+			expression.Value(
+				fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId),
+			),
+		)
 	default:
 		return false, errors.New("unsupported lookup, must be one of UserID, AuthProviderId")
 	}
 
+	projExpr := expression.NamesList(expression.Name("userID"))
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error building user Exists expression")
+	}
+
 	// create input
 	input := &dynamodb.QueryInput{
-		ProjectionExpression:      aws.String("userID"),
-		TableName:                 &clients.DynamoTable,
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{":pk": pk, ":sk": sk},
-		KeyConditionExpression:    aws.String(kce),
+		TableName:                 &DynamoTable,
 		IndexName:                 idx,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case dynamodb.ErrCodeResourceNotFoundException:
-				return false, nil
-			}
-			logger.Log.Error().Err(err).Str("lookup", lookup).Msg("Error checking if user exists in table")
-			return false, err
-		} else {
-			logger.Log.Error().Err(err).Str("lookup", lookup).Msg("Error checking if user exists in table")
-			return false, err
-		}
+		logger.Log.Error().Err(err).Str("lookup", lookup).Msg("Error checking if user exists in table")
+		return false, err
 	}
 
 	// user doesn't exist
@@ -586,7 +517,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 // NewAuthProvider creates a new mapping of a user to their auth provider
 func (u *User) NewAuthProvider() error {
 	uap := userAuthProvider{
-		PK:             fmt.Sprintf("%s#%s", UserAuthProviderPrimaryKey, u.UserID),
+		PK:             fmt.Sprintf("%s#%s", UserAuthProviderPartitionKey, u.UserID),
 		SK:             fmt.Sprintf("%s#%s#%s", UserAuthProviderSortKey, *u.AuthProvider, *u.AuthProviderId),
 		UserID:         u.UserID,
 		AuthProviderId: *u.AuthProviderId,
@@ -594,49 +525,43 @@ func (u *User) NewAuthProvider() error {
 	}
 
 	// add the user auth provider to the table
-	av, _ := dynamodbattribute.MarshalMap(uap)
+	av, _ := attributevalue.MarshalMap(uap)
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Error adding user auth provider to table")
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Str("provider", *u.AuthProvider).Msg("Error putting NewAuthProvider for user in database")
 		return err
 	}
 
 	// success
-	logger.Log.Info().Str("userID", u.UserID).Str("provider", *u.AuthProvider).Msg("Successfully user auth provider to table")
+	logger.Log.Info().Str("userID", u.UserID).Str("provider", *u.AuthProvider).Msg("Successfully put NewAuthProvider in database")
 	return nil
 }
 
 // UpdatePoints adds the points to the users score
 func (u *User) UpdatePoints(points int) error {
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#P": aws.String("points"),
+		ExpressionAttributeNames: map[string]string{
+			"#P": "points",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":p": {
-				N: aws.String(strconv.Itoa(points)),
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":p": &dbTypes.AttributeValueMemberN{Value: strconv.Itoa(points)},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserSortKey, u.UserID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.SKVal()},
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("ADD #P :p"),
 	}
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("Unable to update the users points")
 	}
@@ -647,19 +572,15 @@ func (u *User) UpdatePoints(points int) error {
 func (u *User) LeaveGroup(groupID string) (status int, error error) {
 	// delete query
 	input := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, groupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", GroupPartitionKey, groupID)},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: u.PKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete membership from table
-	_, err := clients.DynamoClient.DeleteItem(input)
+	_, err := clients.DynamoClient.DeleteItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -692,8 +613,8 @@ func (u *User) CreateToken() (string, error) {
 	}
 
 	// get the signing key
-	input := &secretsmanager.GetSecretValueInput{SecretId: &clients.JWTSigningSecret}
-	secret, err := clients.SecretsClient.GetSecretValue(input)
+	input := &secretsmanager.GetSecretValueInput{SecretId: &JWTSigningSecret}
+	secret, err := clients.SecretsClient.GetSecretValue(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("unable to get signing key from secretsmanager")
 		return "", err
@@ -711,21 +632,27 @@ func (u *User) CreateToken() (string, error) {
 // GetEndpoints returns all of the device endpoints that a user has
 func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	// input
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", UserPrimaryKey, u.UserID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#", EndpointSortKey)),
-			},
-		},
-		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("arn, platform"),
-		TableName:              &clients.DynamoTable,
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(u.PKVal()))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", EndpointSortKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("arn"), expression.Name("platform"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetEndpoints func")
 	}
 
-	queryResult, queryErr := clients.DynamoClient.Query(input)
+	input := &dynamodb.QueryInput{
+		TableName:                 &DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
+	}
+
+	queryResult, queryErr := clients.DynamoClient.Query(context.TODO(), input)
 	if queryErr != nil {
 		logger.Log.Error().Err(queryErr).Str("userId", u.UserID).Msg("error getting users endpoints")
 		return &[]PlatformEndpoint{}, queryErr
@@ -734,7 +661,7 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	var endpoints []PlatformEndpoint
 	for _, item := range queryResult.Items {
 		endpoint := PlatformEndpoint{}
-		if err := dynamodbattribute.UnmarshalMap(item, &endpoint); err != nil {
+		if err := attributevalue.UnmarshalMap(item, &endpoint); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal item to PlatformEndpoint")
 			continue
 		}

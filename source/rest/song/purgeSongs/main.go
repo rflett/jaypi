@@ -15,10 +15,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(err, http.StatusForbidden)
 	}
 
-	if err := services.PurgeSongs(); err != nil {
-		return services.ReturnError(err, http.StatusInternalServerError)
-	}
-
+	services.PurgeSongs()
 	services.SetPlayCount("1")
 
 	return services.ReturnNoContent()

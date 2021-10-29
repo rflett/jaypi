@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-type responseBody struct {
+type ResponseBody struct {
 	Members []types.User `json:"members"`
 }
 
@@ -37,7 +37,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// return the members
-	rb := responseBody{Members: users}
+	rb := ResponseBody{Members: users}
 	return services.ReturnJSON(rb, http.StatusOK)
 }
 

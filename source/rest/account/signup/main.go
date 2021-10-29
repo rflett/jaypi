@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-// requestBody is the expected body of the request
-type requestBody struct {
+// RequestBody is the expected body of the request
+type RequestBody struct {
 	Name     string `json:"name"`
 	NickName string `json:"nickName"`
 	Email    string `json:"email"`
@@ -23,8 +23,8 @@ type requestBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// unmarshall request body to requestBody struct
-	reqBody := requestBody{}
+	// unmarshall request body to RequestBody struct
+	reqBody := RequestBody{}
 	err := json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)

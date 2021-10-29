@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-type requestBody struct {
+type RequestBody struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
@@ -30,8 +30,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return services.ReturnError(errors.New("You have to be the group owner to do this"), http.StatusForbidden)
 	}
 
-	// unmarshall request body to requestBody struct
-	reqBody := requestBody{}
+	// unmarshall request body to RequestBody struct
+	reqBody := RequestBody{}
 	err = json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)

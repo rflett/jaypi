@@ -1,5 +1,12 @@
 package types
 
+import (
+	"fmt"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/dgrijalva/jwt-go"
+	"os"
+)
+
 const (
 	PartitionKey                 = "PK"
 	SortKey                      = "SK"
@@ -52,6 +59,14 @@ var (
 	}
 )
 
+func init() {
+	if v, ok := os.LookupEnv(AppEnvVar); ok {
+		DynamoTable = fmt.Sprintf("jaypi-%s", v)
+		JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", v)
+		AssetsBucket = fmt.Sprintf("jaypi-assets-%s", v)
+	}
+}
+
 type PlayCount struct {
 	Value *string `json:"value"`
 }
@@ -78,4 +93,42 @@ type LoginResponse struct {
 	User      User   `json:"user"`
 	Token     string `json:"token"`
 	TokenType string `json:"tokenType"`
+}
+
+// UserClaims are the custom claims that embedded into the JWT token for authentication
+type UserClaims struct {
+	Name           string  `json:"name"`
+	Picture        *string `json:"picture"`
+	AuthProvider   string  `json:"https://delegator.com.au/AuthProvider"`
+	AuthProviderId string  `json:"https://delegator.com.au/AuthProviderId"`
+	jwt.StandardClaims
+}
+
+// userAuthProvider represents a user and their AuthProviderId
+type userAuthProvider struct {
+	PK             string `json:"-" dynamodbav:"PK"`
+	SK             string `json:"-" dynamodbav:"SK"`
+	UserID         string `json:"userID"`
+	AuthProviderId string `json:"authProviderId"`
+	AuthProvider   string `json:"authProvider"`
+}
+
+// songVote is a votes in a users top 10
+type songVote struct {
+	PK     string `json:"-" dynamodbav:"PK"`
+	SK     string `json:"-" dynamodbav:"SK"`
+	SongID string `json:"songID"`
+	UserID string `json:"userID"`
+	Rank   int    `json:"rank"`
+}
+
+func (s *songVote) GetAsSong() (Song, error) {
+	song := Song{
+		SongID: s.SongID,
+	}
+	if err := song.Get(); err != nil {
+		return Song{}, err
+	}
+	song.Rank = &s.Rank
+	return song, nil
 }

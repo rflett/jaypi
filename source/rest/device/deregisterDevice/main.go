@@ -34,12 +34,12 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// you can only delete your own endpoint
-	if *attributes["CustomUserData"] != authContext.UserID {
+	if attributes["CustomUserData"] != authContext.UserID {
 		return services.ReturnError(errors.New("Cannot deregister endpoint not associated with this user"), http.StatusForbidden)
 	}
 
 	// you can only delete an endpoint that's still enabled
-	if *attributes["Enabled"] != "true" {
+	if attributes["Enabled"] != "true" {
 		return services.ReturnError(errors.New("Cannot deregister disabled endpoint"), http.StatusBadRequest)
 	}
 

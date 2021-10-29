@@ -1,13 +1,15 @@
 package types
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/dchest/uniuri"
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
@@ -46,26 +48,34 @@ type groupMember struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+func (g *Group) PKVal() string {
+	return fmt.Sprintf("%s#%s", GroupPartitionKey, g.GroupID)
+}
+
+func (g *Group) SKVal() string {
+	return fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)
+}
+
 // Create the group and save it to the database
 func (g *Group) Create() (status int, error error) {
 	// set fields
 	g.GroupID = uuid.NewString()
-	g.PK = fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)
-	g.SK = fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)
+	g.PK = g.PKVal()
+	g.SK = g.SKVal()
 	g.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	// create item
-	av, _ := dynamodbattribute.MarshalMap(g)
+	av, _ := attributevalue.MarshalMap(g)
 
 	// create input
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
 
 	// add to table
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -98,62 +108,32 @@ func (g *Group) Update() (status int, error error) {
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#N":  aws.String("name"),
-			"#UA": aws.String("updatedAt"),
-			"#O":  aws.String("ownerID"),
+		ExpressionAttributeNames: map[string]string{
+			"#N":  "name",
+			"#UA": "updatedAt",
+			"#O":  "ownerID",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":ua": {
-				S: g.UpdatedAt,
-			},
-			":n": {
-				S: &g.Name,
-			},
-			":o": {
-				S: &g.OwnerID,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":ua": &dbTypes.AttributeValueMemberS{Value: *g.UpdatedAt},
+			":n":  &dbTypes.AttributeValueMemberS{Value: g.Name},
+			":o":  &dbTypes.AttributeValueMemberS{Value: g.OwnerID},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		ReturnValues:        aws.String("NONE"),
-		TableName:           &clients.DynamoTable,
+		ReturnValues:        dbTypes.ReturnValueNone,
+		TableName:           &DynamoTable,
 		ConditionExpression: aws.String("#O = :o"),
 		UpdateExpression:    aws.String("SET #N = :n, #UA = :ua"),
 	}
 
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeConditionalCheckFailedException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
-			}
-			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Msg("error updating group")
-			return responseStatus, aerr
-		} else {
-			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group")
-			return http.StatusInternalServerError, err
-		}
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group")
+		return http.StatusInternalServerError, err
 	}
 
 	return http.StatusNoContent, nil
@@ -167,57 +147,29 @@ func (g *Group) NominateOwner(userID string) (status int, error error) {
 
 	// update query
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#UA": aws.String("updatedAt"),
-			"#O":  aws.String("ownerID"),
+		ExpressionAttributeNames: map[string]string{
+			"#UA": "updatedAt",
+			"#O":  "ownerID",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":ua": {
-				S: g.UpdatedAt,
-			},
-			":o": {
-				S: &userID,
-			},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":ua": &dbTypes.AttributeValueMemberS{Value: *g.UpdatedAt},
+			":o":  &dbTypes.AttributeValueMemberS{Value: userID},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		ReturnValues:     aws.String("NONE"),
-		TableName:        &clients.DynamoTable,
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &DynamoTable,
 		UpdateExpression: aws.String("SET #O = :o, #UA = :ua"),
 	}
 
-	_, err := clients.DynamoClient.UpdateItem(input)
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeConditionalCheckFailedException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
-			}
-			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Msg("error updating group owner")
-			return responseStatus, aerr
-		} else {
-			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group owner")
-			return http.StatusInternalServerError, err
-		}
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error updating group owner")
+		return http.StatusInternalServerError, err
 	}
 
 	return http.StatusNoContent, nil
@@ -227,42 +179,20 @@ func (g *Group) NominateOwner(userID string) (status int, error error) {
 func (g *Group) Get() (status int, error error) {
 	// get query
 	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// getItem
-	result, err := clients.DynamoClient.GetItem(input)
+	result, err := clients.DynamoClient.GetItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			var responseStatus int
-			switch aerr.Code() {
-			case dynamodb.ErrCodeProvisionedThroughputExceededException:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeResourceNotFoundException:
-				responseStatus = http.StatusNotFound
-			case dynamodb.ErrCodeRequestLimitExceeded:
-				responseStatus = http.StatusTooManyRequests
-			case dynamodb.ErrCodeInternalServerError:
-				responseStatus = http.StatusInternalServerError
-			default:
-				responseStatus = http.StatusInternalServerError
-			}
-			logger.Log.Error().Err(aerr).Str("groupID", g.GroupID).Msg("error getting group from table")
-			return responseStatus, aerr
-		} else {
-			logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error getting group from table")
-			return http.StatusInternalServerError, err
-		}
+		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error getting group from table")
+		return http.StatusInternalServerError, err
 	}
 
 	if len(result.Item) == 0 {
@@ -270,7 +200,7 @@ func (g *Group) Get() (status int, error error) {
 	}
 
 	// unmarshal item into struct
-	err = dynamodbattribute.UnmarshalMap(result.Item, &g)
+	err = attributevalue.UnmarshalMap(result.Item, &g)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("failed to unmarshal dynamo item to group")
 	}
@@ -287,35 +217,27 @@ func (g *Group) Delete() (status int, error error) {
 
 	// inputs
 	deleteGroupCodeInput := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupCodeSortKey, g.Code)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", GroupCodeSortKey, g.Code)},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 	deleteGroupInput := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			"SK": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupSortKey, g.GroupID)),
-			},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: g.PKVal()},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: g.SKVal()},
 		},
-		TableName: &clients.DynamoTable,
+		TableName: &DynamoTable,
 	}
 
 	// delete code from table
-	if _, err := clients.DynamoClient.DeleteItem(deleteGroupCodeInput); err != nil {
+	if _, err := clients.DynamoClient.DeleteItem(context.TODO(), deleteGroupCodeInput); err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group code item")
 	}
 
 	// delete group from table
-	if _, err := clients.DynamoClient.DeleteItem(deleteGroupInput); err != nil {
+	if _, err := clients.DynamoClient.DeleteItem(context.TODO(), deleteGroupInput); err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error deleting group item")
 		return http.StatusInternalServerError, err
 	}
@@ -357,13 +279,13 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 	}
 
 	// create the new group membership
-	av, _ := dynamodbattribute.MarshalMap(member)
+	av, _ := attributevalue.MarshalMap(member)
 	putMemberInput := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
-	_, err = clients.DynamoClient.PutItem(putMemberInput)
+	_, err = clients.DynamoClient.PutItem(context.TODO(), putMemberInput)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Str("userID", userID).Msg("Error adding user to group")
 		return http.StatusInternalServerError, err
@@ -377,22 +299,28 @@ func (g *Group) AddUser(userID string) (status int, err error) {
 // GetCode returns the code for a group
 func (g *Group) GetCode() (string, error) {
 	// input
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(g.PKVal()))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", GroupCodeSortKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("code"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetCode func")
+	}
+
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			":sk": {
-				S: aws.String("#CODE"),
-			},
-		},
-		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("code"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -402,7 +330,7 @@ func (g *Group) GetCode() (string, error) {
 
 	// unmarshal groupID into the Group struct
 	gc := GroupCode{}
-	err = dynamodbattribute.UnmarshalMap(result.Items[0], &gc)
+	err = attributevalue.UnmarshalMap(result.Items[0], &gc)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupId", g.GroupID).Msg("error unmarshalling groupId to GroupCode")
 		fmt.Printf("Failed to unmarshal Record, %v", err)
@@ -448,20 +376,20 @@ func (g *Group) NewCode() error {
 	}
 
 	gc := GroupCode{
-		PK:      fmt.Sprintf("%s#%s", GroupCodePrimaryKey, g.GroupID),
+		PK:      g.PKVal(),
 		SK:      fmt.Sprintf("%s#%s", GroupCodeSortKey, code),
 		GroupID: g.GroupID,
 		Code:    code,
 	}
 
 	// add the code to the table
-	av, _ := dynamodbattribute.MarshalMap(gc)
+	av, _ := attributevalue.MarshalMap(gc)
 	input := &dynamodb.PutItemInput{
-		TableName:    &clients.DynamoTable,
+		TableName:    &DynamoTable,
 		Item:         av,
-		ReturnValues: aws.String("NONE"),
+		ReturnValues: dbTypes.ReturnValueNone,
 	}
-	_, err := clients.DynamoClient.PutItem(input)
+	_, err := clients.DynamoClient.PutItem(context.TODO(), input)
 
 	// handle errors
 	if err != nil {
@@ -478,21 +406,28 @@ func (g *Group) NewCode() error {
 // GetMembers returns all the members of a group
 func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	// get the users in the group
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#", UserPrimaryKey)),
-			},
-		},
-		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		ProjectionExpression:   aws.String("userID"),
-		TableName:              &clients.DynamoTable,
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(g.PKVal()))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", UserPartitionKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("userID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetMembers func")
 	}
 
-	groupMembers, err := clients.DynamoClient.Query(input)
+	// input
+	input := &dynamodb.QueryInput{
+		TableName:                 &DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
+	}
+
+	groupMembers, err := clients.DynamoClient.Query(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error getting group members")
 		return []User{}, err
@@ -501,7 +436,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	var users []User = nil
 	for _, member := range groupMembers.Items {
 		user := User{}
-		if err = dynamodbattribute.UnmarshalMap(member, &user); err != nil {
+		if err = attributevalue.UnmarshalMap(member, &user); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal group member to user")
 			continue
 		}
@@ -524,20 +459,25 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 // GetGames returns the games in a group
 func (g *Group) GetGames() ([]Game, error) {
 	// get the users in the group
-	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID)),
-			},
-			":sk": {
-				S: aws.String("GAME#"),
-			},
-		},
-		KeyConditionExpression: aws.String("PK = :pk and begins_with(SK, :sk)"),
-		TableName:              &clients.DynamoTable,
+	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(g.PKVal()))
+	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", GameSortKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetGames func")
 	}
 
-	groupsGames, err := clients.DynamoClient.Query(input)
+	// input
+	input := &dynamodb.QueryInput{
+		TableName:                 &DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	}
+
+	groupsGames, err := clients.DynamoClient.Query(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("groupID", g.GroupID).Msg("error getting groups games")
 		return []Game{}, err
@@ -547,7 +487,7 @@ func (g *Group) GetGames() ([]Game, error) {
 	games := []Game{}
 	for _, groupGame := range groupsGames.Items {
 		game := Game{}
-		if err = dynamodbattribute.UnmarshalMap(groupGame, &game); err != nil {
+		if err = attributevalue.UnmarshalMap(groupGame, &game); err != nil {
 			logger.Log.Error().Err(err).Msg("Unable to unmarshal groupGame to game")
 			continue
 		}
@@ -559,23 +499,30 @@ func (g *Group) GetGames() ([]Game, error) {
 // ValidateCode checks if a code already exists against a group and returns an error if it does
 func validateGroupCode(code string) error {
 	// input
+	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupCodePartitionKey))
+	skCondition := expression.Key(SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", GroupCodeSortKey, code)))
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
+
+	projExpr := expression.NamesList(expression.Name("code"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for validateGroupCode func")
+	}
+
+	// input
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":sk": {
-				S: aws.String(fmt.Sprintf("%s#%s", GroupCodeSortKey, code)),
-			},
-			":pk": {
-				S: aws.String(fmt.Sprintf("%s#", GroupCodePrimaryKey)),
-			},
-		},
-		IndexName:              aws.String(GSI),
-		KeyConditionExpression: aws.String("SK = :sk and begins_with(PK, :pk)"),
-		ProjectionExpression:   aws.String("code"),
-		TableName:              &clients.DynamoTable,
+		TableName:                 &DynamoTable,
+		IndexName:                 aws.String(GSI),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
 	}
 
 	// query
-	result, err := clients.DynamoClient.Query(input)
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
 
 	// handle errors
 	if err != nil {

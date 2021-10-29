@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/zmb3/spotify"
 	"golang.org/x/oauth2/clientcredentials"
 	"io/ioutil"
@@ -39,13 +39,13 @@ func queueForCounter(songID *string) error {
 	// create message body
 	mb, _ := json.Marshal(types.BeanCounterBody{SongID: *songID})
 	input := &sqs.SendMessageInput{
-		DelaySeconds: aws.Int64(0),
+		DelaySeconds: 0,
 		MessageBody:  aws.String(string(mb)),
 		QueueUrl:     &beanCounterQueue,
 	}
 
 	// send the message to the queue
-	message, err := clients.SQSClient.SendMessage(input)
+	message, err := clients.SQSClient.SendMessage(context.TODO(), input)
 
 	if err != nil {
 		logger.Log.Error().Err(err).Str("songID", *songID).Msg("Unable to put the song onto the beanCounterQueue")
@@ -64,24 +64,24 @@ func queueForSelf(s *types.Song, nextUpdated *time.Time) error {
 
 	// queue delay
 	diff := nextUpdated.Unix() - now
-	var delaySeconds int64
+	var delaySeconds int32
 	if diff <= 0 {
 		// don't set it to 0 or the lambda will trigger over and over rapidly
 		delaySeconds = 10
 	} else {
-		delaySeconds = diff
+		delaySeconds = int32(diff)
 	}
 
 	// create message body
 	mb, _ := json.Marshal(types.ChuneRefreshBody{SongID: s.SongID})
 	input := &sqs.SendMessageInput{
-		DelaySeconds: &delaySeconds,
+		DelaySeconds: delaySeconds,
 		MessageBody:  aws.String(string(mb)),
 		QueueUrl:     &chuneRefreshQueue,
 	}
 
 	// send the message to the queue
-	message, err := clients.SQSClient.SendMessage(input)
+	message, err := clients.SQSClient.SendMessage(context.TODO(), input)
 
 	if err != nil {
 		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Unable to put the song onto the refreshQueue")

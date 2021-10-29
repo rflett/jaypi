@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-type responseBody struct {
+type ResponseBody struct {
 	Votes []types.Song `json:"votes"`
 }
 
@@ -41,7 +41,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	// response
-	rb := responseBody{Votes: votes}
+	rb := ResponseBody{Votes: votes}
 	return services.ReturnJSON(rb, http.StatusOK)
 }
 
