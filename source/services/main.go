@@ -88,7 +88,7 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.GroupCodeSortKey, code)))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("groupID"))
+	projExpr := expression.NamesList(expression.Name("GroupID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
@@ -216,7 +216,7 @@ func UserIsInGroup(userID string, groupID string) (bool, error) {
 	)
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("userID"))
+	projExpr := expression.NamesList(expression.Name("UserID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 

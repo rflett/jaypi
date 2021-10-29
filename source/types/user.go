@@ -34,9 +34,9 @@ type User struct {
 	AuthProvider   *string  `json:"authProvider"`
 	AuthProviderId *string  `json:"authProviderId"`
 	AvatarUrl      *string  `json:"avatarUrl"`
-	Votes          *[]Song  `json:"votes" dynamodbav:"votes,omitemptyelem"`
+	Votes          *[]Song  `json:"votes" dynamodbav:"Votes,omitemptyelem"`
 	UpdatedAt      *string  `json:"updatedAt"`
-	Password       *string  `json:"-" dynamodbav:"password"`
+	Password       *string  `json:"-"`
 }
 
 // return the partition key value for a user
@@ -55,7 +55,7 @@ func (u *User) voteCount() (count int, error error) {
 	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", SongPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("songID"))
+	projExpr := expression.NamesList(expression.Name("SongID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
@@ -414,7 +414,7 @@ func (u *User) GetByAuthProviderId() (status int, error error) {
 	)
 	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
-	projExpr := expression.NamesList(expression.Name("userID"))
+	projExpr := expression.NamesList(expression.Name("UserID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
@@ -476,7 +476,7 @@ func (u *User) Exists(lookup string) (bool, error) {
 		return false, errors.New("unsupported lookup, must be one of UserID, AuthProviderId")
 	}
 
-	projExpr := expression.NamesList(expression.Name("userID"))
+	projExpr := expression.NamesList(expression.Name("UserID"))
 	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
@@ -636,7 +636,7 @@ func (u *User) GetEndpoints() (*[]PlatformEndpoint, error) {
 	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", EndpointSortKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("arn"), expression.Name("platform"))
+	projExpr := expression.NamesList(expression.Name("Arn"), expression.Name("Platform"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 

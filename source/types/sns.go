@@ -21,9 +21,9 @@ type PlatformApp struct {
 type PlatformEndpoint struct {
 	PK       string `json:"-" dynamodbav:"PK"`
 	SK       string `json:"-" dynamodbav:"SK"`
-	Arn      string `json:"-" dynamodbav:"arn"`
-	UserID   string `json:"-" dynamodbav:"userID"`
-	Platform string `json:"-" dynamodbav:"platform"`
+	Arn      string `json:"-"`
+	UserID   string `json:"-"`
+	Platform string `json:"-"`
 }
 
 // GetPlatformEndpointFromToken returns a PlatformEndpoint based on the device token

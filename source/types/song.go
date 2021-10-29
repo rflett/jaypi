@@ -108,7 +108,7 @@ func (s *Song) Exists() (bool, error) {
 	skCondition := expression.Key(SortKey).Equal(expression.Value(s.SKVal()))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("songID"))
+	projExpr := expression.NamesList(expression.Name("SongID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 

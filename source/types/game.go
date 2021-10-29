@@ -135,7 +135,7 @@ func (g *Game) Exists() (bool, error) {
 	skCondition := expression.Key(SortKey).Equal(expression.Value(g.SKVal()))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("gameID"))
+	projExpr := expression.NamesList(expression.Name("GameID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 

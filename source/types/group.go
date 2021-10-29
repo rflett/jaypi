@@ -303,7 +303,7 @@ func (g *Group) GetCode() (string, error) {
 	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", GroupCodeSortKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("code"))
+	projExpr := expression.NamesList(expression.Name("Code"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
@@ -410,7 +410,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	skCondition := expression.Key(SortKey).BeginsWith(fmt.Sprintf("%s#", UserPartitionKey))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("userID"))
+	projExpr := expression.NamesList(expression.Name("UserID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
@@ -503,7 +503,7 @@ func validateGroupCode(code string) error {
 	skCondition := expression.Key(SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", GroupCodeSortKey, code)))
 	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
-	projExpr := expression.NamesList(expression.Name("code"))
+	projExpr := expression.NamesList(expression.Name("Code"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 

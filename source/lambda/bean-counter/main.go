@@ -76,7 +76,7 @@ func getVoters(songID string) (voters []string, err error) {
 	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.SongPartitionKey, songID)))
 	keyCondition := expression.KeyAnd(pkCondition, skCondition)
 
-	projExpr := expression.NamesList(expression.Name("userID"))
+	projExpr := expression.NamesList(expression.Name("UserID"))
 
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
 
