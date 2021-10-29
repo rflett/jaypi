@@ -14,7 +14,7 @@ type responseBody struct {
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	recentSongs, err := services.GetRecentlyPlayed()
+	recentSongs, err := services.GetRecentlyPlayed(100)
 	if err != nil {
 		return services.ReturnError(err, http.StatusInternalServerError)
 	}

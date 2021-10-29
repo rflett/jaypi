@@ -38,20 +38,15 @@ func RandStringRunes(n int) string {
 }
 
 // GetRecentlyPlayed returns the songs that have been played
-func GetRecentlyPlayed() ([]types.Song, error) {
+func GetRecentlyPlayed(count int32) ([]types.Song, error) {
 	// input
-	condition := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
-	expr, err := expression.NewBuilder().WithCondition(condition).Build()
-
-	if err != nil {
-		logger.Log.Error().Err(err).Msg("error building expression for GetRecentlyPlayed func")
-	}
-
 	input := &dynamodb.ScanInput{
-		TableName:                 &types.DynamoTable,
-		Limit:                     aws.Int32(100),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPartitionKey)},
+		},
+		FilterExpression: aws.String("begins_with(PK, :pk)"),
+		TableName:        &types.DynamoTable,
+		Limit:            &count,
 	}
 
 	// get songs from db

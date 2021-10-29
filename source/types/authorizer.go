@@ -11,7 +11,7 @@ type AuthorizerContext struct {
 
 func (a *AuthorizerContext) IsAdmin() error {
 	// bad, but sufficient
-	const RyanUserID = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
+	const RyanUserID = "2ef05ca2-aef4-40aa-8e5f-d69c7795e543"
 	const JamesUserID = "0f74f03e-0a04-463e-a577-4cce146ff670"
 
 	admins := []string{RyanUserID, JamesUserID}
