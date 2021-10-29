@@ -86,7 +86,7 @@ func GetGroupFromCode(code string) (*types.Group, error) {
 	// input
 	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.GroupCodePartitionKey))
 	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.GroupCodeSortKey, code)))
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
 	projExpr := expression.NamesList(expression.Name("GroupID"))
 
