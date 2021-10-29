@@ -109,9 +109,9 @@ func (g *Group) Update() (status int, error error) {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#N":  "name",
-			"#UA": "updatedAt",
-			"#O":  "ownerID",
+			"#N":  "Name",
+			"#UA": "UpdatedAt",
+			"#O":  "OwnerID",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":ua": &dbTypes.AttributeValueMemberS{Value: *g.UpdatedAt},
@@ -148,8 +148,8 @@ func (g *Group) NominateOwner(userID string) (status int, error error) {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#UA": "updatedAt",
-			"#O":  "ownerID",
+			"#UA": "UpdatedAt",
+			"#O":  "OwnerID",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":ua": &dbTypes.AttributeValueMemberS{Value: *g.UpdatedAt},

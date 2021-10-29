@@ -89,7 +89,7 @@ func (u *User) GenerateAvatarUrl() (avatarUuid string, error error) {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#A": "avatarUrl",
+			"#A": "AvatarUrl",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":a": &dbTypes.AttributeValueMemberS{Value: avatarUrl},
@@ -170,8 +170,8 @@ func (u *User) Update() (status int, error error) {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#NN": "nickName",
-			"#UA": "updatedAt",
+			"#NN": "NickName",
+			"#UA": "UpdatedAt",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":nn": &dbTypes.AttributeValueMemberS{Value: *u.NickName},
@@ -548,7 +548,7 @@ func (u *User) NewAuthProvider() error {
 func (u *User) UpdatePoints(points int) error {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#P": "points",
+			"#P": "Points",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":p": &dbTypes.AttributeValueMemberN{Value: strconv.Itoa(points)},

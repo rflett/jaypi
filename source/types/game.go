@@ -75,9 +75,9 @@ func (g *Game) Update() (status int, error error) {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#N":  "name",
-			"#D":  "description",
-			"#UA": "updatedAt",
+			"#N":  "Name",
+			"#D":  "Description",
+			"#UA": "UpdatedAt",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":ua": &dbTypes.AttributeValueMemberS{Value: *g.UpdatedAt},

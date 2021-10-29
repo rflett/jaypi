@@ -155,8 +155,8 @@ func (s *Song) Played() error {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
-			"#PA": "playedAt",
-			"#PP": "playedPosition",
+			"#PA": "PlayedAt",
+			"#PP": "PlayedPosition",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
 			":pk": &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
