@@ -40,13 +40,21 @@ func RandStringRunes(n int) string {
 // GetRecentlyPlayed returns the songs that have been played
 func GetRecentlyPlayed(count int32) ([]types.Song, error) {
 	// input
+	pkCondition := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
+	playedCondition := expression.Name("PlayedPosition").GreaterThan(expression.Value(0))
+	condition := expression.And(pkCondition, playedCondition)
+
+	expr, err := expression.NewBuilder().WithCondition(condition).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetGroupFromCode func")
+	}
+
 	input := &dynamodb.ScanInput{
-		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
-			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPartitionKey)},
-		},
-		FilterExpression: aws.String("begins_with(PK, :pk)"),
-		TableName:        &types.DynamoTable,
-		Limit:            &count,
+		TableName:                 &types.DynamoTable,
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     &count,
 	}
 
 	// get songs from db
@@ -308,12 +316,17 @@ func ReturnError(err error, status int) (events.APIGatewayProxyResponse, error) 
 // PurgeSongs removes all songs from the table
 func PurgeSongs() {
 	// input
+	pkCondition := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
+	expr, err := expression.NewBuilder().WithCondition(pkCondition).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetGroupFromCode func")
+	}
+
 	input := &dynamodb.ScanInput{
-		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
-			":pk": &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#", types.SongPartitionKey)},
-		},
-		FilterExpression: aws.String("begins_with(PK, :pk)"),
-		TableName:        &types.DynamoTable,
+		TableName:                 &types.DynamoTable,
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
 	}
 
 	paginator := dynamodb.NewScanPaginator(clients.DynamoClient, input)
