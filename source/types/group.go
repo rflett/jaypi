@@ -420,7 +420,7 @@ func (g *Group) GetMembers(withVotes bool) ([]User, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 &DynamoTable,
 		KeyConditionExpression:    expr.KeyCondition(),
-		ExpressionAttributeNames: expr.Names(),
+		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ProjectionExpression:      expr.Projection(),
 	}

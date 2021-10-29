@@ -42,14 +42,14 @@ const (
 	TestAuthProviderId           = "ryan.flett1@gmail.com"
 	TestAuthProviderName         = "Ryan"
 	TestAuthProvierUserID        = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
-	TestAuthProviderGroupID        = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
-	TestAuthProvierPass          = "Socom#3"
+	TestAuthProviderGroupID      = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
+	TestAuthProvierPass          = ""
 )
 
 var (
 	JWTSigningSecret   = "jaypi-private-key-staging"
 	DynamoTable        = "jaypi-staging"
-	AssetsBucket       = "jaypi-staging-rfacc"
+	AssetsBucket       = "jaypi-assets-staging"
 	TestRequestContext = events.APIGatewayProxyRequestContext{
 		Authorizer: map[string]interface{}{
 			"AuthProvider":   TestAuthProvider,
@@ -64,9 +64,7 @@ func init() {
 	if v, ok := os.LookupEnv(AppEnvVar); ok {
 		DynamoTable = fmt.Sprintf("jaypi-%s", v)
 		JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", v)
-	}
-	if v, ok := os.LookupEnv(AssetsBucketVar); ok {
-		AssetsBucket = v
+		AssetsBucket = fmt.Sprintf("jaypi-assets-%s", v)
 	}
 }
 

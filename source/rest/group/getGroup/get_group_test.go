@@ -9,11 +9,11 @@ import (
 	"testing"
 )
 
-func TestGetUsersVotes(t *testing.T) {
+func TestGetGroup(t *testing.T) {
 	request := events.APIGatewayProxyRequest{
 		RequestContext: types.TestRequestContext,
 		PathParameters: map[string]string{
-			"userId": "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585",
+			"groupId": types.TestAuthProviderGroupID,
 		},
 	}
 
@@ -21,11 +21,11 @@ func TestGetUsersVotes(t *testing.T) {
 	assert.Nil(t, err)
 
 	if assert.NotNil(t, response) {
-		rb := ResponseBody{}
+		rb := types.Group{}
 		err = json.Unmarshal([]byte(response.Body), &rb)
 		assert.Nil(t, err)
 
 		assert.Equal(t, http.StatusOK, response.StatusCode, "Expected 200 OK status")
-		assert.GreaterOrEqual(t, len(rb.Votes), 1)
+		assert.Equal(t, types.TestAuthProviderGroupID, rb.GroupID, "Expected group ids to be equal")
 	}
 }
