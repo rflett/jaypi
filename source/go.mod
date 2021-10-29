@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/rs/zerolog v1.25.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/stretchr/testify v1.7.0
 	github.com/zmb3/spotify v1.3.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d

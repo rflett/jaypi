@@ -39,10 +39,11 @@ type GroupCode struct {
 
 // groupMember represents a users membership in a group
 type groupMember struct {
-	PK      string `json:"-" dynamodbav:"PK"`
-	SK      string `json:"-" dynamodbav:"SK"`
-	UserID  string `json:"userID"`
-	GroupID string `json:"groupID"`
+	PK        string `json:"-" dynamodbav:"PK"`
+	SK        string `json:"-" dynamodbav:"SK"`
+	UserID    string `json:"userID"`
+	GroupID   string `json:"groupID"`
+	CreatedAt string `json:"createdAt"`
 }
 
 // Create the group and save it to the database
@@ -327,10 +328,11 @@ func (g *Group) Delete() (status int, error error) {
 func (g *Group) AddUser(userID string) (status int, err error) {
 	user := User{UserID: userID}
 	member := groupMember{
-		PK:      fmt.Sprintf("%s#%s", GroupPrimaryKey, g.GroupID),
-		SK:      fmt.Sprintf("%s#%s", UserPrimaryKey, userID),
-		GroupID: g.GroupID,
-		UserID:  userID,
+		PK:        g.PKVal(),
+		SK:        fmt.Sprintf("%s#%s", UserPartitionKey, userID),
+		GroupID:   g.GroupID,
+		UserID:    userID,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 
 	// get the users groups

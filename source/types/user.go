@@ -373,6 +373,18 @@ func (u *User) GetVotes() ([]Song, error) {
 // GetGroups returns the groups a user is a member of
 func (u *User) GetGroups() ([]Group, error) {
 	// get the users in the group
+	pkCondition := expression.Key(PartitionKey).BeginsWith(fmt.Sprintf("%s#", GroupPartitionKey))
+	skCondition := expression.Key(SortKey).Equal(expression.Value(u.PKVal()))
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
+
+	projExpr := expression.NamesList(expression.Name("GroupID"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Str("userID", u.UserID).Msg("error building GetGroups expression")
+	}
+
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
