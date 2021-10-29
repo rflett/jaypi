@@ -74,7 +74,7 @@ func queueForScorer(points *int, userIDs []string) error {
 func getVoters(songID string) (voters []string, err error) {
 	pkCondition := expression.Key(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.UserPartitionKey))
 	skCondition := expression.Key(types.SortKey).Equal(expression.Value(fmt.Sprintf("%s#%s", types.SongPartitionKey, songID)))
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+	keyCondition := expression.KeyAnd(skCondition, pkCondition)
 
 	projExpr := expression.NamesList(expression.Name("UserID"))
 
