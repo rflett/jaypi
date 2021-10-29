@@ -42,8 +42,9 @@ func GetRecentlyPlayed(count int32) ([]types.Song, error) {
 	// input
 	pkFilter := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
 	playedFilter := expression.Name("PlayedPosition").GreaterThan(expression.Value(0))
+	filter := expression.And(pkFilter, playedFilter)
 
-	expr, err := expression.NewBuilder().WithFilter(playedFilter).WithFilter(pkFilter).Build()
+	expr, err := expression.NewBuilder().WithFilter(filter).Build()
 
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("error building expression for GetRecentlyPlayed func")
