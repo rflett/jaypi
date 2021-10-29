@@ -277,8 +277,8 @@ functions:
     name: register-device-${self:provider.stage}
     description: "Register a device with a user for notifications"
     environment:
-      GOOGLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/GCM/google-fcm-notifications-dev
-      APPLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/APNS/apple-apn-notifications-dev
+      GOOGLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/GCM/google-fcm-notifications-${self:provider.stage}
+      APPLE_PLATFORM_APP: arn:aws:sns:ap-southeast-2:135314794262:app/APNS_SANDBOX/apple-apn-notifications-${self:provider.stage}
       FUNCTION_NAME: register-device
     package:
       include:
