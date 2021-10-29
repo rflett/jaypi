@@ -13,15 +13,15 @@ import (
 	"strings"
 )
 
-type requestBody struct {
+type RequestBody struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 // Handler is our handle on life
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// unmarshall request body to requestBody struct
-	reqBody := requestBody{}
+	// unmarshall request body to RequestBody struct
+	reqBody := RequestBody{}
 	err := json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)

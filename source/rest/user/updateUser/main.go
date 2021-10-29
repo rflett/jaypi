@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// requestBody is the expected body of the update user request
-type requestBody struct {
+// RequestBody is the expected body of the update user request
+type RequestBody struct {
 	NickName string `json:"nickName"`
 }
 
@@ -22,8 +22,8 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	authContext := services.GetAuthorizerContext(request.RequestContext)
 
-	// unmarshall request body to requestBody struct
-	reqBody := requestBody{}
+	// unmarshall request body to RequestBody struct
+	reqBody := RequestBody{}
 	err = json.Unmarshal([]byte(request.Body), &reqBody)
 	if err != nil {
 		return services.ReturnError(err, http.StatusBadRequest)

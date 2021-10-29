@@ -414,7 +414,6 @@ functions:
     name: get-user-avatar-url-${self:provider.stage}
     description: "Generate a pre-signed URL for uploading a users avatar"
     environment:
-      ASSETS_BUCKET: jaypi-${self:provider.stage}-rfacc
       FUNCTION_NAME: get-user-avatar-url
     package:
       include:
