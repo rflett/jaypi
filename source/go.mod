@@ -3,7 +3,7 @@ module jjj.rflett.com/jjj-api
 go 1.14
 
 require (
-	github.com/aws/aws-lambda-go v1.26.0
+	github.com/aws/aws-lambda-go v1.27.0
 	github.com/aws/aws-sdk-go v1.40.49
 	github.com/aws/aws-sdk-go-v2/config v1.8.2
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.2.2
