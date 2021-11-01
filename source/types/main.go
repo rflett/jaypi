@@ -22,6 +22,8 @@ const (
 	UserAuthProviderSortKey      = "#PROVIDER_ID"
 	PlayCountPartitionKey        = "PLAYCOUNT"
 	PlayCountSortKey             = "CURRENT"
+	PlayedSongsPartitionKey      = "PLAYEDSONGS"
+	PlayedSongsSortKey           = "CURRENT"
 	GameSortKey                  = "GAME"
 	EndpointSortKey              = "#ENDPOINT"
 	GSI                          = "GSI1"
@@ -30,19 +32,19 @@ const (
 	AuthProviderFacebook         = "facebook"
 	AuthProviderInstagram        = "instagram"
 	AuthProviderSpotify          = "spotify"
-	AuthProviderInternal    = "delegator"
-	SNSPlatformGoogle       = "android"
-	SNSPlatformApple        = "ios"
-	UserAvatarDomain        = "assets.jaypi.com.au"
-	GroupMembershipLimit    = 10
-	VoteLimit               = 10
-	AppEnvVar               = "APP_ENV"
-	TestAuthProvider        = "delegator"
-	TestAuthProviderId      = "ryan.flett1@gmail.com"
-	TestAuthProviderName    = "Ryan"
-	TestAuthProviderUserID  = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
-	TestAuthProviderGroupID = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
-	TestAuthProviderPass    = ""
+	AuthProviderInternal         = "delegator"
+	SNSPlatformGoogle            = "android"
+	SNSPlatformApple             = "ios"
+	UserAvatarDomain             = "assets.jaypi.com.au"
+	GroupMembershipLimit         = 10
+	VoteLimit                    = 10
+	AppEnvVar                    = "APP_ENV"
+	TestAuthProvider             = "delegator"
+	TestAuthProviderId           = "ryan.flett1@gmail.com"
+	TestAuthProviderName         = "Ryan"
+	TestAuthProviderUserID       = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
+	TestAuthProviderGroupID      = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
+	TestAuthProviderPass         = ""
 )
 
 var (

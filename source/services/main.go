@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -37,9 +38,54 @@ func RandStringRunes(n int) string {
 	return fmt.Sprintf("test-%s", string(b))
 }
 
+// GetCurrentPlayCount looks up the current playCount item and returns its value. It should start at 1.
+func GetCurrentPlayCount() (int, error) {
+	pkCondition := expression.Key(types.PartitionKey).Equal(expression.Value(types.PlayCountPartitionKey))
+	skCondition := expression.Key(types.SortKey).Equal(expression.Value(types.PlayCountSortKey))
+	keyCondition := expression.KeyAnd(pkCondition, skCondition)
+
+	projExpr := expression.NamesList(expression.Name("value"))
+
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
+
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error building expression for GetCurrentPlayCount func")
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 &types.DynamoTable,
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ProjectionExpression:      expr.Projection(),
+	}
+	result, err := clients.DynamoClient.Query(context.TODO(), input)
+	if err != nil || result.Count == 0 {
+		logger.Log.Error().Err(err).Msg("Unable to get the latest song position")
+		return 0, err
+	}
+
+	var pc = types.PlayCount{}
+	unmarshalErr := attributevalue.UnmarshalMap(result.Items[0], &pc)
+	if unmarshalErr != nil {
+		logger.Log.Error().Err(unmarshalErr).Msg("Unable to unmarshall query result to playCount")
+		return 0, unmarshalErr
+	}
+
+	playCountInt, err := strconv.Atoi(*pc.Value)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to convert play count to int")
+	}
+
+	return playCountInt, nil
+}
+
 // GetRecentlyPlayed returns the songs that have been played
 func GetRecentlyPlayed(count int32) ([]types.Song, error) {
 	// input
+
+
+
 	pkFilter := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
 	playedFilter := expression.Name("PlayedPosition").GreaterThan(expression.Value(0))
 	filter := expression.And(pkFilter, playedFilter)

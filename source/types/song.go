@@ -13,6 +13,7 @@ import (
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types/jjj"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -145,13 +146,7 @@ func (s *Song) Exists() (bool, error) {
 }
 
 // Played marks the song as played and records its play time and position
-func (s *Song) Played() error {
-	// get current played count
-	currentPlayCount, playCountErr := getCurrentPlayCount()
-	if playCountErr != nil {
-		return playCountErr
-	}
-
+func (s *Song) Played(currentPlayCount int) error {
 	// update query
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
@@ -162,7 +157,7 @@ func (s *Song) Played() error {
 			":pk": &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
 			":sk": &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 			":pa": &dbTypes.AttributeValueMemberS{Value: *s.PlayedAt},
-			":pp": &dbTypes.AttributeValueMemberN{Value: *currentPlayCount},
+			":pp": &dbTypes.AttributeValueMemberN{Value: strconv.Itoa(currentPlayCount)},
 		},
 		Key: map[string]dbTypes.AttributeValue{
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
@@ -182,6 +177,7 @@ func (s *Song) Played() error {
 		return err
 	}
 
+	s.addToPlayedList()
 	incrementPlayCount()
 	return nil
 }
@@ -218,42 +214,6 @@ func (s *Song) Get() error {
 	return nil
 }
 
-// getCurrentPlayCount looks up the current playCount item and returns its value. It should start at 1.
-func getCurrentPlayCount() (*string, error) {
-	pkCondition := expression.Key(PartitionKey).Equal(expression.Value(PlayCountPartitionKey))
-	skCondition := expression.Key(SortKey).Equal(expression.Value(PlayCountSortKey))
-	keyCondition := expression.KeyAnd(pkCondition, skCondition)
-
-	projExpr := expression.NamesList(expression.Name("value"))
-
-	expr, err := expression.NewBuilder().WithKeyCondition(keyCondition).WithProjection(projExpr).Build()
-
-	if err != nil {
-		logger.Log.Error().Err(err).Msg("error building expression for getCurrentPlayCount func")
-	}
-
-	input := &dynamodb.QueryInput{
-		TableName:                 &DynamoTable,
-		KeyConditionExpression:    expr.KeyCondition(),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		ProjectionExpression:      expr.Projection(),
-	}
-	result, err := clients.DynamoClient.Query(context.TODO(), input)
-	if err != nil || result.Count == 0 {
-		logger.Log.Error().Err(err).Msg("Unable to get the latest song position")
-		return aws.String("0"), err
-	}
-
-	var pc = PlayCount{}
-	unmarshalErr := attributevalue.UnmarshalMap(result.Items[0], &pc)
-	if unmarshalErr != nil {
-		logger.Log.Error().Err(unmarshalErr).Msg("Unable to unmarshall query result to playCount")
-		return aws.String("0"), unmarshalErr
-	}
-	return pc.Value, nil
-}
-
 // incrementPlayCount increments the current playCount value
 func incrementPlayCount() {
 	input := &dynamodb.UpdateItemInput{
@@ -274,5 +234,30 @@ func incrementPlayCount() {
 	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Unable to increment the latest song position")
+	}
+}
+
+// addToPlayedList adds the song to the list of played songs
+func (s *Song) addToPlayedList() {
+	av := &dbTypes.AttributeValueMemberS{Value: s.SongID}
+
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]string{
+			"#S": "SongIDs",
+		},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":s": &dbTypes.AttributeValueMemberL{Value: []dbTypes.AttributeValue{av}},
+		},
+		Key: map[string]dbTypes.AttributeValue{
+			PartitionKey: &dbTypes.AttributeValueMemberS{Value: PlayedSongsPartitionKey},
+			SortKey:      &dbTypes.AttributeValueMemberS{Value: PlayedSongsSortKey},
+		},
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &DynamoTable,
+		UpdateExpression: aws.String("SET #S = list_append(#S, :s)"),
+	}
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to add songID to played list")
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"jjj.rflett.com/jjj-api/clients"
 	"jjj.rflett.com/jjj-api/logger"
+	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"jjj.rflett.com/jjj-api/types/jjj"
 	"net/http"
@@ -223,8 +224,11 @@ func HandleRequest(ctx context.Context, sqsEvent events.SQSEvent) error {
 		_ = jjjSong.Create()
 	}
 
+	// get the play count
+	currentPlayCount, _ := services.GetCurrentPlayCount()
+
 	// mark the song as played
-	_ = jjjSong.Played()
+	_ = jjjSong.Played(currentPlayCount)
 
 	// trigger scorer lambda
 	_ = queueForCounter(&jjjSong.SongID)
