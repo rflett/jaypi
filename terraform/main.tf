@@ -80,6 +80,7 @@ resource "aws_iam_role_policy" "jaypi" {
       {
         Effect = "Allow"
         Action = [
+          "dynamodb:BatchGetItem",
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
