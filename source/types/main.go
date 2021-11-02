@@ -8,49 +8,59 @@ import (
 )
 
 const (
-	PartitionKey                 = "PK"
-	SortKey                      = "SK"
-	GroupPartitionKey            = "GROUP"
-	GroupSortKey                 = "#PROFILE"
-	SongPartitionKey             = "SONG"
-	SongSortKey                  = "#PROFILE"
+	PartitionKey = "PK"
+	SortKey      = "SK"
+
+	GroupPartitionKey     = "GROUP"
+	GroupSortKey          = "#PROFILE"
+	GroupCodePartitionKey = "GROUP"
+	GroupCodeSortKey      = "#CODE"
+	GamePartitionKey      = "GROUP"
+	GameSortKey           = "GAME"
+
+	SongPartitionKey = "SONG"
+	SongSortKey      = "#PROFILE"
+
 	UserPartitionKey             = "USER"
 	UserSortKey                  = "#PROFILE"
-	GroupCodePartitionKey        = "GROUP"
-	GroupCodeSortKey             = "#CODE"
 	UserAuthProviderPartitionKey = "USER"
 	UserAuthProviderSortKey      = "#PROVIDER_ID"
-	PlayCountPartitionKey        = "PLAYCOUNT"
-	PlayCountSortKey             = "CURRENT"
-	PlayedSongsPartitionKey      = "PLAYEDSONGS"
-	PlayedSongsSortKey           = "CURRENT"
-	GameSortKey                  = "GAME"
 	EndpointSortKey              = "#ENDPOINT"
-	GSI                          = "GSI1"
-	AuthProviderGoogle           = "google"
-	AuthProviderGitHub           = "github"
-	AuthProviderFacebook         = "facebook"
-	AuthProviderInstagram        = "instagram"
-	AuthProviderSpotify          = "spotify"
-	AuthProviderInternal         = "delegator"
-	SNSPlatformGoogle            = "android"
-	SNSPlatformApple             = "ios"
-	UserAvatarDomain             = "assets.jaypi.com.au"
-	GroupMembershipLimit         = 10
-	VoteLimit                    = 10
-	AppEnvVar                    = "APP_ENV"
-	TestAuthProvider             = "delegator"
-	TestAuthProviderId           = "ryan.flett1@gmail.com"
-	TestAuthProviderName         = "Ryan"
-	TestAuthProviderUserID       = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
-	TestAuthProviderGroupID      = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
-	TestAuthProviderPass         = ""
+
+	PlayCountPartitionKey   = "PLAYCOUNT"
+	PlayCountSortKey        = "CURRENT"
+	PlayedSongsPartitionKey = "PLAYEDSONGS"
+	PlayedSongsSortKey      = "CURRENT"
+
+	GSI = "GSI1"
+
+	AuthProviderGoogle    = "google"
+	AuthProviderGitHub    = "github"
+	AuthProviderFacebook  = "facebook"
+	AuthProviderInstagram = "instagram"
+	AuthProviderSpotify   = "spotify"
+	AuthProviderInternal  = "delegator"
+
+	SNSPlatformGoogle = "android"
+	SNSPlatformApple  = "ios"
+
+	GroupMembershipLimit = 10
+	VoteLimit            = 10
+	AppEnvVar            = "APP_ENV"
+
+	TestAuthProvider        = "delegator"
+	TestAuthProviderId      = "ryan.flett1@gmail.com"
+	TestAuthProviderName    = "Ryan"
+	TestAuthProviderUserID  = "2e26e7dc-3f8c-456d-9d1b-8ce5b6447585"
+	TestAuthProviderGroupID = "22abc6b1-3947-466d-8c62-6a73d82fb24e"
+	TestAuthProviderPass    = ""
 )
 
 var (
 	JWTSigningSecret   = "jaypi-private-key-staging"
 	DynamoTable        = "jaypi-staging"
 	AssetsBucket       = "jaypi-assets-staging"
+	AssetsDomain       = "assets.staging.jaypi.online"
 	TestRequestContext = events.APIGatewayProxyRequestContext{
 		Authorizer: map[string]interface{}{
 			"AuthProvider":   TestAuthProvider,
@@ -66,6 +76,7 @@ func init() {
 		DynamoTable = fmt.Sprintf("jaypi-%s", v)
 		JWTSigningSecret = fmt.Sprintf("jaypi-private-key-%s", v)
 		AssetsBucket = fmt.Sprintf("jaypi-assets-%s", v)
+		AssetsDomain = fmt.Sprintf("assets.%s.jaypi.online", v)
 	}
 }
 

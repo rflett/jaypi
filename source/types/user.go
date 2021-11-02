@@ -84,7 +84,7 @@ func (u *User) voteCount() (count int, error error) {
 // GenerateAvatarUrl generates a new avatar UUID and sets it on the user
 func (u *User) GenerateAvatarUrl() (avatarUuid string, error error) {
 	avatarUuid = uuid.NewString()
-	avatarUrl := fmt.Sprintf("https://%s/user/avatar/%s.jpg", UserAvatarDomain, avatarUuid)
+	avatarUrl := fmt.Sprintf("https://%s/user/avatar/%s.jpg", AssetsDomain, avatarUuid)
 
 	// update query
 	input := &dynamodb.UpdateItemInput{

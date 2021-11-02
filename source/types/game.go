@@ -28,7 +28,7 @@ type Game struct {
 }
 
 func (g *Game) PKVal() string {
-	return fmt.Sprintf("%s#%s", GroupPartitionKey, g.GroupID)
+	return fmt.Sprintf("%s#%s", GamePartitionKey, g.GroupID)
 }
 
 func (g *Game) SKVal() string {
