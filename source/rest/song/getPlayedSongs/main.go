@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/services"
 	"jjj.rflett.com/jjj-api/types"
 	"net/http"
@@ -23,7 +21,7 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		startIndex = v
 	}
 
-	numItems := "152"
+	numItems := "5"
 	if v, ok := request.QueryStringParameters["numItems"]; ok {
 		numItems = v
 	}
@@ -43,12 +41,6 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// return the songs
 	rb := responseBody{PlayedCount: currentPlayCount, Songs: recentSongs}
-
-	logger.Log.Info().Msg(fmt.Sprintf("%d", currentPlayCount))
-	for _, song := range recentSongs {
-		logger.Log.Info().Msg(fmt.Sprintf("id:%s, num:%d", song.SongID, *song.PlayedPosition))
-	}
-
 	return services.ReturnJSON(rb, http.StatusOK)
 }
 

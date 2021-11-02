@@ -92,7 +92,7 @@ func getPlayedSongIDs(startIndex int, numItems int) (songIDs []string, err error
 	if startIndex+numItems > playedCount {
 		logger.Log.Warn().Str("numItems", strconv.Itoa(numItems)).Str("startIndex", strconv.Itoa(startIndex)).Str("playedCount", strconv.Itoa(playedCount)).Msg(fmt.Sprintf("sum of startIndex and numItems can't exceed playedCount"))
 		startIndex = 0
-		numItems = 5
+		numItems = 0
 	}
 
 	return playedSongs.SongIDs[startIndex:min(startIndex+numItems, 100)], nil
@@ -155,6 +155,11 @@ func GetRecentlyPlayed(startIndex string, numItems string) ([]types.Song, error)
 
 	playedSongs, err := getPlayedSongIDs(startIndexInt, numItemsInt)
 	if err != nil {
+		return []types.Song{}, err
+	}
+
+	if len(playedSongs) == 0 {
+		logger.Log.Info().Msg("Either no songs have been played or filter validation resulted in 0 songs to return.")
 		return []types.Song{}, err
 	}
 
