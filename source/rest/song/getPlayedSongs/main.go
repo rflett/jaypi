@@ -11,7 +11,7 @@ import (
 )
 
 type responseBody struct {
-	PlayedCount int
+	PlayedCount int          `json:"played_count"`
 	Songs       []types.Song `json:"songs"`
 }
 
