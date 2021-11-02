@@ -18,7 +18,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"jjj.rflett.com/jjj-api/logger"
 	"jjj.rflett.com/jjj-api/types"
 	"os"

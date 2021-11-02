@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"os"
 )
 
