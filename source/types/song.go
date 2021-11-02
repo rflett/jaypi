@@ -158,6 +158,7 @@ func (s *Song) Played(currentPlayCount int) error {
 			":sk": &dbTypes.AttributeValueMemberS{Value: s.SKVal()},
 			":pa": &dbTypes.AttributeValueMemberS{Value: *s.PlayedAt},
 			":pp": &dbTypes.AttributeValueMemberN{Value: strconv.Itoa(currentPlayCount)},
+			":n":  &dbTypes.AttributeValueMemberS{Value: "NULL"},
 		},
 		Key: map[string]dbTypes.AttributeValue{
 			PartitionKey: &dbTypes.AttributeValueMemberS{Value: s.PKVal()},
@@ -165,18 +166,26 @@ func (s *Song) Played(currentPlayCount int) error {
 		},
 		ReturnValues:        dbTypes.ReturnValueNone,
 		TableName:           &DynamoTable,
-		ConditionExpression: aws.String("PK = :pk and SK = :sk"),
+		ConditionExpression: aws.String("PK = :pk and SK = :sk and attribute_type(#PP, :n)"),
 		UpdateExpression:    aws.String("SET #PA = :pa, #PP = :pp"),
 	}
 
 	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 
-	// handle errors
 	if err != nil {
+		// in the lead up to the day songs will get played twice - we don't want to mark them as played twice, only the first time
+		// the condition will fail if the PlayedPosition attribute is not NULL, see line 171
+		var crf *dbTypes.ConditionalCheckFailedException
+		if errors.As(err, &crf) {
+			logger.Log.Info().Str("songID", s.SongID).Msg("The song wasn't updated because it has already been played.")
+			return nil
+		}
+
 		logger.Log.Error().Err(err).Str("songID", s.SongID).Msg("Error updating song")
 		return err
 	}
 
+	// add it to the playlist and then increment the played count
 	s.addToPlayedList()
 	incrementPlayCount()
 	return nil

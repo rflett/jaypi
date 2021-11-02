@@ -38,6 +38,66 @@ func RandStringRunes(n int) string {
 	return fmt.Sprintf("test-%s", string(b))
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// getPlayedSongIDs returns the IDs of the songs that have been played
+func getPlayedSongIDs(startIndex int, numItems int) (songIDs []string, err error) {
+	input := &dynamodb.GetItemInput{
+		Key: map[string]dbTypes.AttributeValue{
+			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: types.PlayedSongsPartitionKey},
+			types.SortKey:      &dbTypes.AttributeValueMemberS{Value: types.PlayedSongsSortKey},
+		},
+		TableName: &types.DynamoTable,
+	}
+
+	// getItem
+	result, err := clients.DynamoClient.GetItem(context.TODO(), input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error getting played song ids from table")
+		return []string{}, err
+	}
+
+	playedSongs := types.PlayedSongs{}
+
+	// unmarshal item into struct
+	err = attributevalue.UnmarshalMap(result.Item, &playedSongs)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("failed to unmarshal dynamo item to playedSongs")
+		return []string{}, err
+	}
+
+	playedCount := len(playedSongs.SongIDs)
+	logger.Log.Info().Msg(fmt.Sprintf("We have stored %d played songs", playedCount))
+
+	logger.Log.Info().Str("numItems", strconv.Itoa(numItems)).Str("startIndex", strconv.Itoa(startIndex)).Str("playedCount", strconv.Itoa(playedCount)).Msg(fmt.Sprintf("validating parameters"))
+	if startIndex < 0 {
+		logger.Log.Warn().Str("startIndex", strconv.Itoa(startIndex)).Msg(fmt.Sprintf("startIndex must be positive"))
+		startIndex = 0
+	}
+	if startIndex > playedCount-1 {
+		logger.Log.Warn().Str("startIndex", strconv.Itoa(startIndex)).Str("playedCount", strconv.Itoa(playedCount)).Msg(fmt.Sprintf("startIndex must be at least 1 less than the playCount"))
+		startIndex = 0
+	}
+	if numItems < 0 {
+		logger.Log.Warn().Str("numItems", strconv.Itoa(numItems)).Msg(fmt.Sprintf("numItems must be positive"))
+		numItems = 5
+	}
+	if startIndex+numItems > playedCount {
+		logger.Log.Warn().Str("numItems", strconv.Itoa(numItems)).Str("startIndex", strconv.Itoa(startIndex)).Str("playedCount", strconv.Itoa(playedCount)).Msg(fmt.Sprintf("sum of startIndex and numItems can't exceed playedCount"))
+		startIndex = 0
+		numItems = 5
+	}
+
+	return playedSongs.SongIDs[startIndex:min(startIndex+numItems, 100)], nil
+}
+
 // GetCurrentPlayCount looks up the current playCount item and returns its value. It should start at 1.
 func GetCurrentPlayCount() (int, error) {
 	pkCondition := expression.Key(types.PartitionKey).Equal(expression.Value(types.PlayCountPartitionKey))
@@ -81,45 +141,53 @@ func GetCurrentPlayCount() (int, error) {
 }
 
 // GetRecentlyPlayed returns the songs that have been played
-func GetRecentlyPlayed(count int32) ([]types.Song, error) {
+func GetRecentlyPlayed(startIndex string, numItems string) ([]types.Song, error) {
 	// input
-
-
-
-	pkFilter := expression.Name(types.PartitionKey).BeginsWith(fmt.Sprintf("%s#", types.SongPartitionKey))
-	playedFilter := expression.Name("PlayedPosition").GreaterThan(expression.Value(0))
-	filter := expression.And(pkFilter, playedFilter)
-
-	expr, err := expression.NewBuilder().WithFilter(filter).Build()
-
+	startIndexInt, err := strconv.Atoi(startIndex)
 	if err != nil {
-		logger.Log.Error().Err(err).Msg("error building expression for GetRecentlyPlayed func")
+		return []types.Song{}, err
 	}
 
-	input := &dynamodb.ScanInput{
-		TableName:                 &types.DynamoTable,
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		FilterExpression:          expr.Filter(),
-		Limit:                     &count,
+	numItemsInt, err := strconv.Atoi(numItems)
+	if err != nil {
+		return []types.Song{}, err
 	}
 
-	// get songs from db
-	recentSongs, err := clients.DynamoClient.Scan(context.TODO(), input)
+	playedSongs, err := getPlayedSongIDs(startIndexInt, numItemsInt)
 	if err != nil {
-		logger.Log.Error().Err(err).Msg("error getting recent songs")
+		return []types.Song{}, err
+	}
+
+	var keys []map[string]dbTypes.AttributeValue
+	for _, songID := range playedSongs {
+		keys = append(keys, map[string]dbTypes.AttributeValue{
+			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", types.SongPartitionKey, songID)},
+			types.SortKey:      &dbTypes.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", types.SongSortKey, songID)},
+		})
+	}
+
+	input := &dynamodb.BatchGetItemInput{RequestItems: map[string]dbTypes.KeysAndAttributes{
+		types.DynamoTable: {
+			Keys: keys,
+		},
+	}}
+
+	result, err := clients.DynamoClient.BatchGetItem(context.TODO(), input)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error getting played song ids from table")
 		return []types.Song{}, err
 	}
 
 	// unmarshal songs into slice
 	var songs []types.Song = nil
-	for _, recentSong := range recentSongs.Items {
-		song := types.Song{}
-		if err = attributevalue.UnmarshalMap(recentSong, &song); err != nil {
-			logger.Log.Error().Err(err).Msg("Unable to unmarshal recentSong to song")
-			continue
-		}
-		songs = append(songs, song)
+	err = attributevalue.UnmarshalListOfMaps(result.Responses[types.DynamoTable], &songs)
+
+	// handle errors
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("error unmarshalling BatchGetItem to ListOfMaps")
+		return []types.Song{}, err
 	}
 
 	// sort the songs by PlayedPosition asc
@@ -396,16 +464,19 @@ func PurgeSongs() {
 			}
 		}
 	}
+
+	setPlayCount("1")
+	resetPlayedList()
 }
 
-// SetPlayCount sets the current playCount to a specific value
-func SetPlayCount(val string) {
+// setPlayCount sets the current playCount to a specific value
+func setPlayCount(val string) {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
 			"#V": "value",
 		},
 		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
-			":val": &dbTypes.AttributeValueMemberS{Value: val},
+			":val": &dbTypes.AttributeValueMemberN{Value: val},
 		},
 		Key: map[string]dbTypes.AttributeValue{
 			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: types.PlayCountPartitionKey},
@@ -418,5 +489,28 @@ func SetPlayCount(val string) {
 	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Unable to set the play count")
+	}
+}
+
+// resetPlayedList resets the current playedList
+func resetPlayedList() {
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]string{
+			"#S": "SongIDs",
+		},
+		ExpressionAttributeValues: map[string]dbTypes.AttributeValue{
+			":val": &dbTypes.AttributeValueMemberL{Value: []dbTypes.AttributeValue{}},
+		},
+		Key: map[string]dbTypes.AttributeValue{
+			types.PartitionKey: &dbTypes.AttributeValueMemberS{Value: types.PlayedSongsPartitionKey},
+			types.SortKey:      &dbTypes.AttributeValueMemberS{Value: types.PlayedSongsSortKey},
+		},
+		ReturnValues:     dbTypes.ReturnValueNone,
+		TableName:        &types.DynamoTable,
+		UpdateExpression: aws.String("SET #S = :val"),
+	}
+	_, err := clients.DynamoClient.UpdateItem(context.TODO(), input)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Unable to reset the playedList")
 	}
 }

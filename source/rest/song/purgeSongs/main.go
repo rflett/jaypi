@@ -16,7 +16,6 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	services.PurgeSongs()
-	services.SetPlayCount("1")
 
 	return services.ReturnNoContent()
 }

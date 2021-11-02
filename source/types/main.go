@@ -134,3 +134,10 @@ func (s *songVote) GetAsSong() (Song, error) {
 	song.Rank = &s.Rank
 	return song, nil
 }
+
+// PlayedSongs is a repr of the item that tracks the songs that have been played
+type PlayedSongs struct {
+	PK      string   `json:"-" dynamodbav:"PK"`
+	SK      string   `json:"-" dynamodbav:"SK"`
+	SongIDs []string `json:"songIDs"`
+}

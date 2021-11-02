@@ -868,6 +868,11 @@ functions:
       - http:
           path: songs/played
           method: get
+          request:
+            parameters:
+              querystrings:
+                startIndex: true
+                numItems: true
           authorizer:
             name: authorizer
             resultTtlInSeconds: 0
