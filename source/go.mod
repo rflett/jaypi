@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.1
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.7.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.8.2
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.9.2
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.19.11
 	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
 	github.com/getsentry/sentry-go v0.11.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
